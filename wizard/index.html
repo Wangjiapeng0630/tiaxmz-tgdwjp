@@ -227,7 +227,18 @@ const MODELS = [
   {family:'S7-1200', model:'CPU 1214C DC/DC/DC', mlfb:'6ES7214-1AG40-0XB0', fw:'V4.5'},
   {family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', fw:'V4.5'},
   {family:'S7-1200', model:'CPU 1215C DC/DC/RLY', mlfb:'6ES7215-1HG40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1215C AC/DC/RLY', mlfb:'6ES7215-1BG40-0XB0', fw:'V4.5'},
   {family:'S7-1200', model:'CPU 1217C DC/DC/DC', mlfb:'6ES7217-1AG40-0XB0', fw:'V4.5'},
+  {family:'S7-1200 G2', model:'CPU 1212C G2 DC/DC/DC', mlfb:'6ES7212-1AG50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1212C G2 AC/DC/Rly', mlfb:'6ES7212-1BG50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1212C G2 DC/DC/Rly', mlfb:'6ES7212-1HG50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1212FC G2 DC/DC/DC', mlfb:'6ES7212-1AF50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1214C G2 DC/DC/DC', mlfb:'6ES7214-1AH50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1214C G2 AC/DC/Rly', mlfb:'6ES7214-1BH50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1214C G2 DC/DC/Rly', mlfb:'6ES7214-1HH50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1214FC G2 DC/DC/DC', mlfb:'6ES7214-1AF50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1216C G2 Plus DC/DC/DC', mlfb:'6ES7216-1ML50-0XB0', fw:'V4.1'},
+  {family:'S7-1200 G2', model:'CPU 1217C G2 Plus DC/DC/DC', mlfb:'6ES7217-1MM50-0XB0', fw:'V4.1'},
   {family:'S7-1500', model:'CPU 1511-1 PN', mlfb:'6ES7511-1AK02-0AB0', fw:'V2.9'},
   {family:'S7-1500', model:'CPU 1513-1 PN', mlfb:'6ES7513-1AL02-0AB0', fw:'V2.9'},
   {family:'S7-1500', model:'CPU 1516-3 PN/DP', mlfb:'6ES7516-3AN02-0AB0', fw:'V2.9'}
@@ -263,7 +274,8 @@ $('btnGoGen').onclick = ()=>{ show(4); doGen(); };
 
 /* ---------- ① PLC 设备（多台） ---------- */
 const FW = {
-  'S7-1200': ['V4.1','V4.2','V4.3','V4.4','V4.5','V4.6','V4.7'],
+  'S7-1200': ['V4.0','V4.1','V4.2','V4.3','V4.4','V4.5','V4.6','V4.7'],
+  'S7-1200 G2': ['V1.0','V4.1'],
   'S7-1500': ['V2.8','V2.9','V3.0','V3.1']
 };
 const FAMS = [...new Set(MODELS.map(m=>m.family))];
