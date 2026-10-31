@@ -102,11 +102,10 @@ td .mini{width:70px}
           <h2>系列与型号</h2>
           <div class="row" style="margin-bottom:12px">
             <div><label>系列</label><select id="familySel"></select></div>
-            <div><label>固件版本</label>
-              <select id="fwSel">
-                <option>V4.5</option><option>V4.6</option><option>V2.8</option><option>V2.9</option><option>V3.0</option>
-              </select>
+            <div><label>TIA Portal 版本</label>
+              <select id="tiaSel"><option>V21</option><option>V20</option><option>V18</option></select>
             </div>
+            <div><label>固件版本</label><select id="fwSel"></select></div>
             <div><label>设备名（工程内）</label><input type="text" id="deviceName" value="PLC_1"></div>
           </div>
           <div class="model-grid" id="modelGrid"></div>
@@ -267,8 +266,19 @@ $('btnNext').onclick = ()=>show(cur+1);
 $('btnGoGen').onclick = ()=>{ show(4); doGen(); };
 
 /* ---------- ① 型号 ---------- */
+const FW = {
+  'S7-1200': ['V4.1','V4.2','V4.3','V4.4','V4.5','V4.6','V4.7'],
+  'S7-1500': ['V2.8','V2.9','V3.0','V3.1']
+};
+function renderFw(){
+  const fam = $('familySel').value;
+  const list = FW[fam] || ['V4.5'];
+  $('fwSel').innerHTML = list.map(v=>`<option>${v}</option>`).join('');
+  $('fwSel').value = (state.sel && state.sel.family===fam && list.includes(state.sel.fw)) ? state.sel.fw : list.includes('V4.5') ? 'V4.5' : list[list.length-1];
+}
 function renderModels(){
   const fam = $('familySel').value;
+  renderFw();
   $('modelGrid').innerHTML = MODELS.filter(m=>m.family===fam).map((m,i)=>`
     <div class="model-card ${state.sel&&state.sel.mlfb===m.mlfb?'sel':''}" data-mlfb="${m.mlfb}">
       <div class="m-name">${m.model}</div>
@@ -410,7 +420,7 @@ function buildConfig(){
     generator: 'PLC Project Wizard v1',
     generatedAt: new Date().toISOString(),
     project: { name: $('projName').value.trim() || '未命名项目', note: $('projNote').value.trim() },
-    plc: p ? {...p, deviceName: $('deviceName').value.trim() || 'PLC_1'} : null,
+    plc: p ? {...p, tiaVersion: $('tiaSel').value, deviceName: $('deviceName').value.trim() || 'PLC_1'} : null,
     language: state.lang,
     languageNote: $('langNote').value.trim(),
     signalConvention: { note: $('signalNote').value.trim() || '停止/急停常闭：1=正常 0=动作；停止=当前步暂停，急停=输出全切并锁定' },
