@@ -15,6 +15,8 @@
 
 **使用体验**：开工即在右侧任务栏生成六步任务清单，逐项打勾实时可见进度；同时会先给你一张「开工材料清单」（设备型号、IO 表、控制要求、信号约定、延时参数），一次交齐即可连贯跑完六步。
 
+**配置向导（CubeMX 式前端）**：`wizard/index.html` 提供左侧导航栏五段式配置——① PLC 型号选择（系列/型号/订货号/固件）② IO 点导入（粘贴文本/表格自动解析成点表，图片一并交付识别）③ 设备流程编排（模式触发+动作序列+延时）④ 编程语言（梯形图/SCL）⑤ 一键生成 `project.json`。把配置包交给 Agent 说「按配置生成项目」即可一键建出 TIA 工程。本地打开方式：`python -m http.server 8787 --directory wizard` 后访问 `http://127.0.0.1:8787/`。
+
 ## 安装
 
 把仓库中的 `tiaxmz-tgdwjp/` 目录复制到 skill 根目录：
@@ -47,8 +49,11 @@ tiaxmz-tgdwjp/
 ├── SKILL.md                          # 六步工作流、规则、示例、避坑速查
 ├── references/
 │   ├── lad-s7dcl-syntax.md           # 梯形图 S7DCL 导入语法全套
-│   └── framework-template.md         # 程序框架模板（按钮/动作/流程/模式）
+│   ├── framework-template.md         # 程序框架模板（按钮/动作/流程/模式）
+│   └── wizard-config.md              # 向导 project.json 配置格式
 └── locales/                          # 插件页显示名（zh-CN / en-US）
+wizard/
+└── index.html                        # CubeMX 式配置向导前端（一键生成 project.json）
 ```
 
 ## 依赖

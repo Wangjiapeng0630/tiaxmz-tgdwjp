@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PLC 项目配置向导</title>
+<style>
+:root{
+  --nav-bg:#10222c; --nav-fg:#c6d4dc; --nav-active:#009999; --nav-hover:#1b3644;
+  --accent:#009999; --accent-dark:#007a7a; --bg:#f4f6f7; --panel:#ffffff;
+  --border:#d8dee3; --ink:#1f2933; --muted:#667782; --danger:#c0392b; --ok:#189a5c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font:14px/1.6 -apple-system,'PingFang SC','Microsoft YaHei',sans-serif;color:var(--ink);background:var(--bg)}
+.app{display:flex;height:100vh;overflow:hidden}
+/* 左侧导航栏 */
+.nav{width:216px;flex:none;background:var(--nav-bg);color:var(--nav-fg);display:flex;flex-direction:column}
+.brand{padding:20px 18px 14px;font-size:15px;font-weight:600;color:#fff;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand small{display:block;font-size:11px;font-weight:400;color:#7d95a1;margin-top:2px}
+.nav-items{flex:1;padding:10px 0}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:11px 18px;background:none;border:0;color:var(--nav-fg);font-size:13px;cursor:pointer;text-align:left}
+.nav-item:hover{background:var(--nav-hover)}
+.nav-item.active{background:var(--nav-active);color:#fff}
+.nav-item .tick{margin-left:auto;font-size:11px;color:#7d95a1}
+.nav-item.active .tick{color:#d7f5f5}
+.nav-foot{padding:12px 18px;font-size:11px;color:#5d7684;border-top:1px solid rgba(255,255,255,.08)}
+/* 主区域 */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;overflow-y:auto;padding:22px 28px 30px}
+.panel{display:none;max-width:1060px}
+.panel.active{display:block}
+h1{font-size:19px;margin-bottom:4px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px}
+.card h2{font-size:14px;margin-bottom:10px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 4px}
+input[type=text],input[type=number],select,textarea{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font:inherit;background:#fff}
+textarea{min-height:110px;resize:vertical;font-family:Consolas,Monaco,monospace;font-size:12.5px}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.row>div{flex:1;min-width:180px}
+.btn{display:inline-block;padding:8px 16px;border:0;border-radius:6px;background:var(--accent);color:#fff;font:inherit;cursor:pointer}
+.btn:hover{background:var(--accent-dark)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--border)}
+.btn.ghost:hover{background:#eef2f4}
+.btn.danger{background:#fff;color:var(--danger);border:1px solid #e3b7b1}
+.btn.sm{padding:4px 10px;font-size:12px}
+/* 型号卡片 */
+.model-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.model-card{border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;background:#fff}
+.model-card:hover{border-color:var(--accent)}
+.model-card.sel{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,153,153,.18)}
+.model-card .m-name{font-weight:600;font-size:13px}
+.model-card .m-mlfb{font-size:11px;color:var(--muted);font-family:Consolas,monospace}
+.model-card .m-fw{margin-top:6px;font-size:11px;color:var(--accent)}
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}
+th,td{border:1px solid var(--border);padding:6px 9px;text-align:left;vertical-align:middle}
+th{background:#eef2f4;font-weight:600;font-size:12px}
+td input{border:0;width:100%;padding:3px 4px;font:inherit;background:transparent}
+td input:focus{outline:1px solid var(--accent);border-radius:4px;background:#fff}
+td .mini{width:70px}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#e2f3f3;color:#007a7a}
+/* 底部操作条 */
+.bar{flex:none;height:58px;display:flex;align-items:center;gap:12px;padding:0 28px;background:#fff;border-top:1px solid var(--border)}
+.chips{flex:1;display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:12px;padding:3px 10px;border-radius:12px;background:#eef2f4;color:#3d4c56}
+.chip b{color:var(--accent)}
+/* 生成区 */
+.json-box{width:100%;height:260px;font-family:Consolas,monospace;font-size:12px;background:#12222c;color:#cfe3e3;border:0;border-radius:8px;padding:12px}
+.gen-ok{display:none;align-items:center;gap:8px;background:#e7f6ee;border:1px solid #bfe5cf;color:#14663d;padding:10px 14px;border-radius:8px;margin-bottom:12px}
+.toast{position:fixed;right:24px;bottom:76px;background:#12222c;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none}
+.toast.show{opacity:1;transform:none}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+.mode-row{display:flex;gap:8px;margin-bottom:8px}
+.mode-row input:first-child{max-width:120px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 左侧导航栏 -->
+  <aside class="nav">
+    <div class="brand">PLC 项目配置向导<small>PLC Project Wizard · v1</small></div>
+    <div class="nav-items" id="navItems">
+      <button class="nav-item active" data-p="plc">① PLC 型号<span class="tick" id="tick-plc"></span></button>
+      <button class="nav-item" data-p="io">② IO 点导入<span class="tick" id="tick-io"></span></button>
+      <button class="nav-item" data-p="flow">③ 设备流程<span class="tick" id="tick-flow"></span></button>
+      <button class="nav-item" data-p="lang">④ 编程语言<span class="tick" id="tick-lang"></span></button>
+      <button class="nav-item" data-p="gen">⑤ 一键生成<span class="tick" id="tick-gen"></span></button>
+    </div>
+    <div class="nav-foot">配置汇总为 project.json<br>由 Agent + tia-portal MCP 生成项目</div>
+  </aside>
+
+  <!-- 主区域 -->
+  <div class="main">
+    <div class="content">
+      <!-- ① PLC 型号 -->
+      <section class="panel active" id="panel-plc">
+        <h1>选择 PLC 型号</h1>
+        <div class="sub">像 STM32CubeMX 选芯片一样选 CPU；找不到就用自定义输入订货号。</div>
+        <div class="card">
+          <h2>系列与型号</h2>
+          <div class="row" style="margin-bottom:12px">
+            <div><label>系列</label><select id="familySel"></select></div>
+            <div><label>固件版本</label>
+              <select id="fwSel">
+                <option>V4.5</option><option>V4.6</option><option>V2.8</option><option>V2.9</option><option>V3.0</option>
+              </select>
+            </div>
+            <div><label>设备名（工程内）</label><input type="text" id="deviceName" value="PLC_1"></div>
+          </div>
+          <div class="model-grid" id="modelGrid"></div>
+          <label>自定义订货号（可选，覆盖上方选择）</label>
+          <input type="text" id="customMlfb" placeholder="例：6ES7215-1AG40-0XB0">
+          <div class="row" style="margin-top:8px">
+            <div><label>自定义型号名</label><input type="text" id="customModel" placeholder="例：CPU 1215C DC/DC/DC"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2>项目信息</h2>
+          <div class="row">
+            <div><label>项目名称</label><input type="text" id="projName" placeholder="例：主件供料站"></div>
+            <div><label>工作备注（可选）</label><input type="text" id="projNote" placeholder="给 Agent 的补充说明"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ② IO 点 -->
+      <section class="panel" id="panel-io">
+        <h1>导入 IO 点</h1>
+        <div class="sub">支持粘贴文本/表格（地址、符号、说明、状态），自动解析成可编辑点表；图片可一并交给 Agent 识别。</div>
+        <div class="card">
+          <h2>粘贴 IO 表</h2>
+          <textarea id="ioText" placeholder="每行一点，用 Tab / 逗号 / 竖线 / 空格分隔，例：&#10;I0.0  S1  自动/手动  0=手动 1=自动&#10;I0.1  S2  启动按钮  0=断开 1=按下&#10;Q0.0  L1  启动指示灯  0=灭 1=亮"></textarea>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+            <button class="btn" id="btnParse">解析到点表</button>
+            <button class="btn ghost" id="btnAddRow">手动加一行</button>
+            <span class="hint">命名规范：中文、无空格；注释建议「符号 说明：状态语义」</span>
+          </div>
+          <label>IO 表图片（可选，生成时连同配置一起交给 Agent 识别）</label>
+          <input type="file" id="ioImage" accept="image/*" multiple>
+          <div class="hint" id="ioImageList"></div>
+        </div>
+        <div class="card">
+          <h2>点表 <span class="tag" id="ioCount">0 点</span></h2>
+          <table>
+            <thead><tr><th style="width:90px">地址</th><th style="width:70px">类型</th><th style="width:150px">变量名(中文)</th><th style="width:80px">符号</th><th>注释</th><th style="width:60px"></th></tr></thead>
+            <tbody id="ioBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ③ 设备流程 -->
+      <section class="panel" id="panel-flow">
+        <h1>设备流程编排</h1>
+        <div class="sub">按执行顺序列出动作与完成判据；模式触发写清楚，Agent 会先提纯回来给你确认。</div>
+        <div class="card">
+          <h2>模式与触发</h2>
+          <div id="modeRows"></div>
+          <button class="btn ghost sm" id="btnAddMode">+ 加模式</button>
+        </div>
+        <div class="card">
+          <h2>动作序列 <span class="tag" id="stepCount">0 步</span></h2>
+          <table>
+            <thead><tr><th style="width:50px">步</th><th>动作（执行器做什么）</th><th>完成判据（哪个传感器）</th><th style="width:100px">延时(ms)</th><th style="width:60px"></th></tr></thead>
+            <tbody id="stepBody"></tbody>
+          </table>
+          <div style="margin-top:10px;display:flex;gap:10px">
+            <button class="btn ghost sm" id="btnAddStep">+ 加一步</button>
+            <button class="btn danger sm" id="btnClearSteps">清空</button>
+          </div>
+          <label>信号约定与停止/急停行为</label>
+          <textarea id="signalNote" placeholder="例：停止/急停均为常闭，1=正常 0=动作；停止=当前步暂停再启动续跑；急停=切断全部输出并锁定，需重新启动"></textarea>
+        </div>
+      </section>
+
+      <!-- ④ 编程语言 -->
+      <section class="panel" id="panel-lang">
+        <h1>编程语言</h1>
+        <div class="sub">选择生成的程序语言；两者都走框架模板（按钮/动作/流程/模式）。</div>
+        <div class="card">
+          <label style="margin-top:0">程序语言</label>
+          <div class="model-grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+            <div class="model-card sel" data-lang="LAD" id="langLAD">
+              <div class="m-name">梯形图（LAD）</div>
+              <div class="m-mlfb">推荐 · 电工可读 · 触点/线圈/定时器全梯形图</div>
+            </div>
+            <div class="model-card" data-lang="SCL" id="langSCL">
+              <div class="m-name">SCL（结构化控制语言）</div>
+              <div class="m-mlfb">以 LAD 壳 + SCL 网络混编实现（TIA 导入兼容）</div>
+            </div>
+          </div>
+          <label>其他语言偏好（可选）</label>
+          <input type="text" id="langNote" placeholder="例：流程步用 CASE 状态机写法；注释全部中文">
+        </div>
+      </section>
+
+      <!-- ⑤ 一键生成 -->
+      <section class="panel" id="panel-gen">
+        <h1>一键生成</h1>
+        <div class="sub">校验配置 → 输出 project.json → 交给 Agent 一键生成 TIA 项目。</div>
+        <div class="gen-ok" id="genOk">✓ 配置已生成并下载 project.json。把它放进工作目录，对 Agent 说「按配置生成项目」即可。</div>
+        <div class="card">
+          <h2>配置摘要</h2>
+          <div id="genSummary" class="hint" style="font-size:13px"></div>
+          <div style="margin-top:12px;display:flex;gap:10px">
+            <button class="btn" id="btnGen">生成 project.json</button>
+            <button class="btn ghost" id="btnCopy">复制 JSON</button>
+            <button class="btn ghost" id="btnCopyCmd">复制交给 Agent 的话</button>
+          </div>
+          <label>project.json 预览</label>
+          <textarea class="json-box" id="jsonOut" readonly></textarea>
+        </div>
+      </section>
+    </div>
+
+    <!-- 底部操作条 -->
+    <div class="bar">
+      <button class="btn ghost" id="btnPrev">← 上一步</button>
+      <button class="btn ghost" id="btnNext">下一步 →</button>
+      <div class="chips" id="chips"></div>
+      <button class="btn" id="btnGoGen">⚡ 一键生成</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- 数据 ---------- */
+const MODELS = [
+  {family:'S7-1200', model:'CPU 1211C DC/DC/DC', mlfb:'6ES7211-1AE40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1212C DC/DC/DC', mlfb:'6ES7212-1AE40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1214C DC/DC/DC', mlfb:'6ES7214-1AG40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1215C DC/DC/RLY', mlfb:'6ES7215-1HG40-0XB0', fw:'V4.5'},
+  {family:'S7-1200', model:'CPU 1217C DC/DC/DC', mlfb:'6ES7217-1AG40-0XB0', fw:'V4.5'},
+  {family:'S7-1500', model:'CPU 1511-1 PN', mlfb:'6ES7511-1AK02-0AB0', fw:'V2.9'},
+  {family:'S7-1500', model:'CPU 1513-1 PN', mlfb:'6ES7513-1AL02-0AB0', fw:'V2.9'},
+  {family:'S7-1500', model:'CPU 1516-3 PN/DP', mlfb:'6ES7516-3AN02-0AB0', fw:'V2.9'}
+];
+const state = {
+  sel: null, io: [], ioImages: [],
+  modes: [
+    {name:'复位', trigger:'复位信号=1 时按启动按钮'},
+    {name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
+    {name:'自动循环', trigger:'手/自动=1 时按启动按钮'}
+  ],
+  steps: [], lang: 'LAD'
+};
+const $ = id => document.getElementById(id);
+const toast = m => { const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); };
+
+/* ---------- 导航 ---------- */
+const panels = ['plc','io','flow','lang','gen'];
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(panels.length-1, i));
+  panels.forEach((p,idx)=>{
+    $('panel-'+p).classList.toggle('active', idx===cur);
+    document.querySelectorAll('.nav-item')[idx].classList.toggle('active', idx===cur);
+  });
+  refreshChips();
+}
+document.querySelectorAll('.nav-item').forEach((b,idx)=>b.addEventListener('click',()=>show(idx)));
+$('btnPrev').onclick = ()=>show(cur-1);
+$('btnNext').onclick = ()=>show(cur+1);
+$('btnGoGen').onclick = ()=>{ show(4); doGen(); };
+
+/* ---------- ① 型号 ---------- */
+function renderModels(){
+  const fam = $('familySel').value;
+  $('modelGrid').innerHTML = MODELS.filter(m=>m.family===fam).map((m,i)=>`
+    <div class="model-card ${state.sel&&state.sel.mlfb===m.mlfb?'sel':''}" data-mlfb="${m.mlfb}">
+      <div class="m-name">${m.model}</div>
+      <div class="m-mlfb">${m.mlfb}</div>
+      <div class="m-fw">固件 ${m.fw}</div>
+    </div>`).join('');
+  document.querySelectorAll('#modelGrid .model-card').forEach(c=>c.onclick=()=>{
+    state.sel = MODELS.find(m=>m.mlfb===c.dataset.mlfb);
+    $('fwSel').value = state.sel.fw;
+    renderModels(); refreshChips();
+  });
+}
+$('familySel').innerHTML = [...new Set(MODELS.map(m=>m.family))].map(f=>`<option>${f}</option>`).join('');
+$('familySel').onchange = renderModels;
+renderModels();
+
+/* ---------- ② IO 解析 ---------- */
+function parseIo(text){
+  const out=[];
+  for(const raw of text.split(/\r?\n/)){
+    const line = raw.trim();
+    if(!line) continue;
+    const toks = line.split(/\t+| {2,}|\s*\|\s*|\s*,\s*|\s*，\s*|\s*、\s*/).map(s=>s.trim()).filter(Boolean);
+    let addr=null; const rest=[];
+    for(const t of toks){
+      const m = t.replace(/^%/,'').match(/^([IQMiqm])(\d+)\.(\d+)$/);
+      if(m && !addr) addr = (m[1].toUpperCase()+m[2]+'.'+m[3]);
+      else rest.push(t);
+    }
+    if(!addr) continue;
+    let sym='';
+    const r1 = rest.filter(t=>{ if(!sym && /^[A-Za-z]{1,3}\d{1,2}[A-Za-z]?$/.test(t)){ sym=t; return false; } return true; });
+    let name='';
+    const r2 = r1.filter(t=>{ if(!name && /[一-鿿]/.test(t)){ name=t.replace(/\s+/g,''); return false; } return true; });
+    if(!name && r2.length) name = r2.shift().replace(/\s+/g,'');
+    out.push({address:addr, type: addr[0]==='I'?'DI':addr[0]==='Q'?'DO':'M', name:name||addr, symbol:sym, comment:r2.join(' ')});
+  }
+  return out;
+}
+function renderIo(){
+  $('ioCount').textContent = state.io.length + ' 点';
+  $('ioBody').innerHTML = state.io.map((t,i)=>`<tr>
+    <td><input value="${t.address}" data-i="${i}" data-f="address"></td>
+    <td>${t.type}</td>
+    <td><input value="${t.name}" data-i="${i}" data-f="name"></td>
+    <td><input value="${t.symbol}" data-i="${i}" data-f="symbol"></td>
+    <td><input value="${t.comment}" data-i="${i}" data-f="comment"></td>
+    <td><button class="btn danger sm" data-del="${i}">删</button></td>
+  </tr>`).join('');
+  $('ioBody').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+    state.io[+e.target.dataset.i][e.target.dataset.f] = e.target.value.trim();
+    refreshChips();
+  });
+  $('ioBody').querySelectorAll('[data-del]').forEach(b=>b.onclick=e=>{
+    state.io.splice(+e.target.dataset.del,1); renderIo(); refreshChips();
+  });
+}
+$('btnParse').onclick = ()=>{
+  const rows = parseIo($('ioText').value);
+  if(!rows.length){ toast('没解析到点，请检查格式（需要 I0.0/Q0.0 这类地址）'); return; }
+  state.io = rows; renderIo(); refreshChips();
+  toast('识别到 '+rows.length+' 个 IO 点');
+};
+$('btnAddRow').onclick = ()=>{
+  state.io.push({address:'I0.'+state.io.length, type:'DI', name:'', symbol:'', comment:''});
+  renderIo(); refreshChips();
+};
+$('ioImage').onchange = e=>{
+  state.ioImages = [...e.target.files].map(f=>f.name);
+  $('ioImageList').textContent = state.ioImages.length ? '已选图片：'+state.ioImages.join('、')+'（生成时一并交给 Agent）' : '';
+};
+
+/* ---------- ③ 流程 ---------- */
+function renderModes(){
+  $('modeRows').innerHTML = state.modes.map((m,i)=>`
+    <div class="mode-row">
+      <input value="${m.name}" data-mi="${i}" data-mf="name" placeholder="模式名">
+      <input value="${m.trigger}" data-mi="${i}" data-mf="trigger" placeholder="触发方式">
+      <button class="btn danger sm" data-mdel="${i}">删</button>
+    </div>`).join('');
+  $('modeRows').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+    state.modes[+e.target.dataset.mi][e.target.dataset.mf] = e.target.value.trim();
+  });
+  $('modeRows').querySelectorAll('[data-mdel]').forEach(b=>b.onclick=e=>{
+    state.modes.splice(+e.target.dataset.mdel,1); renderModes();
+  });
+}
+function renderSteps(){
+  $('stepCount').textContent = state.steps.length + ' 步';
+  $('stepBody').innerHTML = state.steps.map((s,i)=>`<tr>
+    <td>${i+1}</td>
+    <td><input value="${s.action}" data-si="${i}" data-sf="action" placeholder="例：升降气缸下降"></td>
+    <td><input value="${s.done}" data-si="${i}" data-sf="done" placeholder="例：升降落下到位=1"></td>
+    <td><input type="number" class="mini" value="${s.delayMs}" data-si="${i}" data-sf="delayMs" min="0" step="100"></td>
+    <td><button class="btn danger sm" data-sdel="${i}">删</button></td>
+  </tr>`).join('');
+  $('stepBody').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+    const f = e.target.dataset.sf;
+    state.steps[+e.target.dataset.si][f] = f==='delayMs' ? (+e.target.value||0) : e.target.value.trim();
+  });
+  $('stepBody').querySelectorAll('[data-sdel]').forEach(b=>b.onclick=e=>{
+    state.steps.splice(+e.target.dataset.sdel,1); renderSteps(); refreshChips();
+  });
+}
+$('btnAddStep').onclick = ()=>{ state.steps.push({action:'', done:'', delayMs:0}); renderSteps(); refreshChips(); };
+$('btnClearSteps').onclick = ()=>{ state.steps = []; renderSteps(); refreshChips(); };
+renderModes();
+
+/* ---------- ④ 语言 ---------- */
+$('langLAD').onclick = ()=>{ state.lang='LAD'; $('langLAD').classList.add('sel'); $('langSCL').classList.remove('sel'); refreshChips(); };
+$('langSCL').onclick = ()=>{ state.lang='SCL'; $('langSCL').classList.add('sel'); $('langLAD').classList.remove('sel'); refreshChips(); };
+
+/* ---------- 摘要 ---------- */
+function plcInfo(){
+  const custom = $('customMlfb').value.trim();
+  if(custom) return {family:$('familySel').value, model:$('customModel').value.trim()||'自定义', mlfb:custom, firmware:$('fwSel').value};
+  if(state.sel) return {family:state.sel.family, model:state.sel.model, mlfb:state.sel.mlfb, firmware:$('fwSel').value};
+  return null;
+}
+function refreshChips(){
+  const p = plcInfo();
+  $('chips').innerHTML = [
+    `型号 <b>${p? p.model.split(' ').slice(0,3).join(' '):'未选'}</b>`,
+    `IO <b>${state.io.length}</b> 点`,
+    `流程 <b>${state.steps.length}</b> 步`,
+    `语言 <b>${state.lang}</b>`
+  ].map(h=>`<span class="chip">${h}</span>`).join('');
+  $('tick-plc').textContent = p?'✓':'';
+  $('tick-io').textContent = state.io.length?'✓':'';
+  $('tick-flow').textContent = state.steps.length?'✓':'';
+  $('tick-lang').textContent = '✓';
+}
+
+/* ---------- ⑤ 生成 ---------- */
+function buildConfig(){
+  const p = plcInfo();
+  return {
+    version: 1,
+    generator: 'PLC Project Wizard v1',
+    generatedAt: new Date().toISOString(),
+    project: { name: $('projName').value.trim() || '未命名项目', note: $('projNote').value.trim() },
+    plc: p ? {...p, deviceName: $('deviceName').value.trim() || 'PLC_1'} : null,
+    language: state.lang,
+    languageNote: $('langNote').value.trim(),
+    signalConvention: { note: $('signalNote').value.trim() || '停止/急停常闭：1=正常 0=动作；停止=当前步暂停，急停=输出全切并锁定' },
+    io: state.io.map((t,i)=>({no:i+1, ...t})),
+    ioImages: state.ioImages,
+    modes: state.modes,
+    steps: state.steps.map((s,i)=>({no:i+1, ...s})),
+    notes: $('projNote').value.trim()
+  };
+}
+function doGen(){
+  const p = plcInfo();
+  if(!p){ toast('请先选择 PLC 型号'); show(0); return; }
+  if(!state.io.length){ toast('请先导入 IO 点'); show(1); return; }
+  if(!state.steps.length){ toast('请先编排设备流程'); show(2); return; }
+  const cfg = buildConfig();
+  $('jsonOut').value = JSON.stringify(cfg, null, 2);
+  $('genSummary').innerHTML = [
+    `项目：<b>${cfg.project.name}</b>`,
+    `PLC：<b>${p.model}</b>（${p.mlfb}，${p.firmware}）`,
+    `IO：<b>${state.io.length}</b> 点（DI ${state.io.filter(t=>t.type==='DI').length} / DO ${state.io.filter(t=>t.type==='DO').length}）`,
+    `模式：<b>${state.modes.map(m=>m.name).join(' / ')||'—'}</b>`,
+    `流程：<b>${state.steps.length}</b> 步`,
+    `语言：<b>${state.lang}</b>`
+  ].join(' &nbsp;·&nbsp; ');
+  const blob = new Blob([$('jsonOut').value], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'project.json'; a.click();
+  $('genOk').style.display = 'flex';
+  toast('project.json 已生成并下载');
+}
+$('btnGen').onclick = doGen;
+$('btnCopy').onclick = ()=>{
+  if(!$('jsonOut').value) doGen();
+  navigator.clipboard.writeText($('jsonOut').value).then(()=>toast('JSON 已复制'));
+};
+$('btnCopyCmd').onclick = ()=>{
+  const cmd = '按配置生成项目：用工作目录里的 project.json，按 tiaxmz-tgdwjp skill 的流程生成 TIA 项目（六步任务跟踪，生成前先提纯确认）。';
+  navigator.clipboard.writeText(cmd).then(()=>toast('交接话术已复制'));
+};
+
+refreshChips();
+</script>
+</body>
+</html>

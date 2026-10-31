@@ -16,6 +16,7 @@ description: TIA Portal（博图）PLC 项目开发全流程——通过 tia-por
 5. 编译必须 **0 错误**，并用 DescribeBlockLogic 逐段核对逻辑后才算交付。
 6. MCP 占用项目期间 TIA 界面打不开该项目；交付前必须释放（步骤 6）。
 7. 梯形图细节语法与框架模板在 `references/lad-s7dcl-syntax.md`、`references/framework-template.md`，写代码前先读对应文件。
+8. **配置向导对接**：用户可通过 `wizard/index.html`（CubeMX 式前端）配置并生成 `project.json`；收到该文件时按 `references/wizard-config.md` 解析——plc→任务1、io→任务2、modes/steps/信号约定→任务3 提纯素材、language→任务5，仍走六步任务跟踪与提纯确认关卡。
 
 ## 开工材料清单（请使用者一次交全）
 
