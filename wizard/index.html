@@ -114,7 +114,7 @@ td .mini{width:70px}
           <h2>PLC 设备列表 <span class="tag" id="plcCount">1 台</span></h2>
           <div id="plcList"></div>
           <button class="btn ghost sm" id="btnAddPlc">+ 添加 PLC</button>
-          <div class="hint">多台 PLC 时按住同一子网规划 IP（如 192.168.0.1 / .2 / .3）；PN/IE 接口用于站间通信。</div>
+          <div class="hint">多台 PLC 时分别设置设备名与 PN/IE 接口名；IP 地址不在本向导设置（在 TIA 设备与网络里配）。</div>
         </div>
       </section>
 
@@ -233,7 +233,7 @@ const MODELS = [
   {family:'S7-1500', model:'CPU 1516-3 PN/DP', mlfb:'6ES7516-3AN02-0AB0', fw:'V2.9'}
 ];
 const state = {
-  plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1', ip:'192.168.0.1', subnet:'255.255.255.0'}],
+  plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1'}],
   io: [], attachments: [],
   modes: [
     {plc:'PLC_1', name:'复位', trigger:'复位信号=1 时按启动按钮'},
@@ -287,9 +287,7 @@ function renderPlcs(){
         <div style="flex:0 0 160px"><label>型号名</label><input value="${p.model}" data-pi="${i}" data-pf="model"></div>
         <div style="flex:0 0 100px"><label>固件</label><select data-pi="${i}" data-pf="firmware">${fw.map(v=>`<option ${v===p.firmware?'selected':''}>${v}</option>`).join('')}</select></div>
         <div style="flex:0 0 110px"><label>接口类型</label><select data-pi="${i}" data-pf="ifaceType"><option ${p.ifaceType==='PN/IE'?'selected':''}>PN/IE</option></select></div>
-        <div style="flex:0 0 130px"><label>接口名</label><input value="${p.iface}" data-pi="${i}" data-pf="iface"></div>
-        <div style="flex:0 0 150px"><label>IPv4 地址</label><input value="${p.ip}" data-pi="${i}" data-pf="ip"></div>
-        <div style="flex:0 0 150px"><label>子网掩码</label><input value="${p.subnet}" data-pi="${i}" data-pf="subnet"></div>
+        <div style="flex:0 0 140px"><label>接口名</label><input value="${p.iface}" data-pi="${i}" data-pf="iface"></div>
         <div style="flex:0 0 60px;display:flex;align-items:flex-end"><button class="btn danger sm" data-pdel="${i}">删除</button></div>
       </div>
     </div>`;
@@ -317,7 +315,7 @@ function renderPlcs(){
 }
 $('btnAddPlc').onclick = ()=>{
   const n = state.plcs.length + 1;
-  state.plcs.push({name:'PLC_'+n, family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_'+n, ip:'192.168.0.'+n, subnet:'255.255.255.0'});
+  state.plcs.push({name:'PLC_'+n, family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_'+n});
   renderPlcs(); refreshChips();
   toast('已添加 PLC_'+n);
 };
@@ -489,7 +487,7 @@ function doGen(){
   $('genSummary').innerHTML = [
     `项目：<b>${cfg.project.name}</b>`,
     `TIA：<b>${$('tiaSel').value}</b>`,
-    `PLC：<b>${state.plcs.length}</b> 台（${state.plcs.map(p=>p.model+' @ '+p.ip).join('；')}）`,
+    `PLC：<b>${state.plcs.length}</b> 台（${state.plcs.map(p=>p.model).join('；')}）`,
     `IO：<b>${state.io.length}</b> 点（DI ${state.io.filter(t=>t.type==='DI').length} / DO ${state.io.filter(t=>t.type==='DO').length}）`,
     `模式：<b>${state.modes.map(m=>m.name).join(' / ')||'—'}</b>`,
     `流程：<b>${state.flows.length}</b> 段 · 库块 <b>${state.blocks.length}</b>`,
