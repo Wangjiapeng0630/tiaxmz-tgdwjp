@@ -284,19 +284,27 @@ function modelOpts(p){
   return FAMS.map(f=>`<optgroup label="${f}">`+MODELS.filter(m=>m.family===f).map(m=>`<option value="${m.mlfb}" ${p.mlfb===m.mlfb?'selected':''}>${m.model}</option>`).join('')+`</optgroup>`).join('')
     + `<option value="__custom__" ${known?'':'selected'}>自定义…</option>`;
 }
+function mlfbOptions(p){
+  const models = MODELS.filter(m=>m.family===p.family);
+  const known = models.some(m=>m.mlfb===p.mlfb);
+  return models.map(m=>`<option value="${m.mlfb}" ${p.mlfb===m.mlfb?'selected':''}>${m.mlfb} · ${m.model}</option>`).join('')
+    + `<option value="__custom__" ${known?'':'selected'}>自定义 / 其他订货号…</option>`;
+}
 function renderPlcs(){
   $('plcCount').textContent = state.plcs.length + ' 台';
   $('plcList').innerHTML = state.plcs.map((p,i)=>{
     const fw = FW[p.family] || ['V4.5'];
+    const known = MODELS.some(m=>m.mlfb===p.mlfb);
     return `<div class="plc-block">
       <div class="row">
         <div style="flex:0 0 110px"><label>设备名</label><input value="${p.name}" data-pi="${i}" data-pf="name"></div>
         <div style="flex:0 0 110px"><label>系列</label><select data-pi="${i}" data-pf="family">${FAMS.map(f=>`<option ${f===p.family?'selected':''}>${f}</option>`).join('')}</select></div>
         <div><label>型号</label><select data-pi="${i}" data-pf="modelSel">${modelOpts(p)}</select></div>
-        <div style="flex:0 0 180px"><label>订货号 MLFB</label><input value="${p.mlfb}" data-pi="${i}" data-pf="mlfb" placeholder="6ES7..."></div>
+        <div style="flex:0 0 260px"><label>订货号 MLFB</label><select data-pi="${i}" data-pf="mlfbSel">${mlfbOptions(p)}</select></div>
       </div>
       <div class="row">
-        <div style="flex:0 0 160px"><label>型号名</label><input value="${p.model}" data-pi="${i}" data-pf="model"></div>
+        ${known?'':`<div style="flex:0 0 190px"><label>自定义订货号</label><input value="${p.mlfb}" data-pi="${i}" data-pf="mlfb" placeholder="6ES7..."></div>`}
+        <div style="flex:0 0 200px"><label>型号名</label><input value="${p.model}" data-pi="${i}" data-pf="model"></div>
         <div style="flex:0 0 100px"><label>固件</label><select data-pi="${i}" data-pf="firmware">${fw.map(v=>`<option ${v===p.firmware?'selected':''}>${v}</option>`).join('')}</select></div>
         <div style="flex:0 0 60px;display:flex;align-items:flex-end"><button class="btn danger sm" data-pdel="${i}">删除</button></div>
       </div>
@@ -309,6 +317,14 @@ function renderPlcs(){
         const m = MODELS.find(x=>x.mlfb===e.target.value);
         if(m){ p.model=m.model; p.mlfb=m.mlfb; p.family=m.family; p.firmware=m.fw; }
         else { p.mlfb=''; }
+        renderPlcs(); refreshChips();
+      } else if(f === 'mlfbSel'){
+        const v = e.target.value;
+        if(v === '__custom__'){ p.mlfb=''; }
+        else {
+          const m = MODELS.find(x=>x.mlfb===v);
+          if(m){ p.model=m.model; p.mlfb=m.mlfb; p.family=m.family; p.firmware=m.fw; }
+        }
         renderPlcs(); refreshChips();
       } else if(f === 'family'){
         p.family = e.target.value; p.model=''; p.mlfb=''; p.firmware=(FW[p.family]||['V4.5'])[0];
