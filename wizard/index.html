@@ -190,7 +190,7 @@ td .mini{width:70px}
       <!-- ⑤ 一键生成 -->
       <section class="panel" id="panel-gen">
         <h1>一键生成</h1>
-        <div class="sub">仅 PLC 型号必填，其余可留空；一键生成 → 自动拉起 mimo run 转交 AI 执行。</div>
+        <div class="sub">仅 PLC 型号必填，其余可留空；一键生成 project.json，交给 Agent 即可生成 TIA 项目。</div>
         <div class="gen-ok" id="genOk">✓ 配置已生成并下载 project.json。把它放进工作目录，对 Agent 说「按配置生成项目」即可。</div>
         <div class="card">
           <h2>配置摘要</h2>
@@ -470,21 +470,12 @@ function doGen(){
   if(!state.modes.length) gaps.push('模式');
   if(gaps.length) $('genSummary').innerHTML += `<div class="hint" style="margin-top:6px">⚠ ${gaps.join('、')}未填——配置中留空，Agent 会按材料清单向你补问。</div>`;
   const payload = $('jsonOut').value;
-  const downloadFallback = msg => {
-    const blob = new Blob([payload], {type:'application/json'});
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'project.json'; a.click();
-    $('genOk').style.display = 'flex';
-    $('genOk').textContent = msg;
-  };
-  fetch('/api/handoff', {method:'POST', headers:{'Content-Type':'application/json'}, body: payload})
-    .then(r => r.ok ? r.json() : Promise.reject(new Error('handoff failed')))
-    .then(d => {
-      $('genOk').style.display = 'flex';
-      $('genOk').textContent = '✓ 已自动转交 AI 执行：mimo run 已在 ' + d.workspace + ' 启动，执行窗口里可确认提纯清单。';
-      toast('已转交 AI 执行');
-    })
-    .catch(() => downloadFallback('✓ 配置已生成并下载 project.json（当前非 serve.py 服务，未自动转交；把文件交给 Agent 即可）'));
+  const blob = new Blob([payload], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'project.json'; a.click();
+  $('genOk').style.display = 'flex';
+  $('genOk').textContent = '✓ 配置已生成并下载 project.json。把它放进工作目录，对 Agent 说「按配置生成项目」即可。';
+  toast('project.json 已生成并下载');
 }
 $('btnGen').onclick = doGen;
 $('btnCopy').onclick = ()=>{

@@ -38,7 +38,7 @@
 
 ## 解析要点（Agent）
 
-> **交付通道**：向导页由 `wizard/serve.py` 提供服务时，「一键生成」会把配置写入 `~/Documents/PLCWizard/project.json` 并自动执行 `mimo run "按配置生成项目：读取当前目录 project.json……"` 发起一次 AI 执行；该执行里的 Agent 按本文件解析并走 skill 六步流程。非 serve.py 服务时回退为下载 project.json 人工交办。
+> **交付方式**：向导页「一键生成」输出/下载 `project.json`；使用者把它放进工作目录并说「按配置生成项目」后，Agent 按本文件解析并走 skill 六步流程。
 
 > **留空语义**：`io` / `steps` / `modes` / `signalConvention.note` 等允许为空数组或空串——表示使用者未填。Agent **不得臆造**：按 skill 的材料清单补问，或先生成可填的空骨架。**必填项只有 PLC 型号（`plcs[].mlfb`）**。
 
