@@ -92,3 +92,5 @@ description: TIA Portal（博图）PLC 项目开发全流程——通过 tia-por
 | TIA 界面打不开项目（0100:000295） | 项目被 MCP 占用 | Save+Close+Disconnect 释放 |
 | GetProjectTree 报 WinCCUnified DLL 错 | 本机 TIA 组件不全 | 改用 GetDevices/GetBlocks/GetSoftwareTree |
 | 到料/到位信号一闪而过导致定时器重跑 | 传感器短暂触发后复归 | 加记忆位锁存再定时，完成位锁存到本循环结束 |
+| 设设备 IP 没有工具入口 | 网络节点 IP（`Address`）不在 DeviceItem 属性上 | TIA 界面手动：设备与网络 → 接口 → 以太网地址；交付时附"待手动设 IP 清单" |
+| GetDeviceItem 子路径 not found | 子项路径要带设备同名层级（`设备/设备/子项`） | 用 `ExportDeviceAml` 导出 AML 读真实层级再写路径 |
