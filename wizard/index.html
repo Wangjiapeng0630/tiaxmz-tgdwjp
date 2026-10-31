@@ -98,7 +98,7 @@ td .mini{width:70px}
     <div class="content">
       <!-- ① PLC 型号 -->
       <section class="panel active" id="panel-plc">
-        <h1>PLC 设备与网络</h1>
+        <h1>PLC 设备</h1>
         <div class="sub">可添加多台 PLC；每台设置设备名、系列/型号/订货号/固件。TIA 版本为整个项目的目标版本。</div>
         <div class="card">
           <h2>项目信息</h2>
@@ -338,6 +338,8 @@ function renderPlcs(){
     state.plcs.splice(+e.target.dataset.pdel, 1); renderPlcs(); refreshChips();
   });
   refreshIoTargets();
+  renderModes();
+  renderFlows();
 }
 $('btnAddPlc').onclick = ()=>{
   const n = state.plcs.length + 1;
@@ -541,6 +543,32 @@ $('btnCopyCmd').onclick = ()=>{
   const cmd = '按配置生成项目：用工作目录里的 project.json，按 tiaxmz-tgdwjp skill 的流程生成 TIA 项目（六步任务跟踪，生成前先提纯确认）。';
   navigator.clipboard.writeText(cmd).then(()=>toast('交接话术已复制'));
 };
+
+/* ---------- 深链导航与演示数据 ---------- */
+if(/[?&]demo=1/.test(location.search)){
+  state.plcs = [
+    {name:'2站', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5'},
+    {name:'3站', family:'S7-1200 G2', model:'CPU 1214C G2 DC/DC/DC', mlfb:'6ES7214-1AH50-0XB0', firmware:'V4.1'}
+  ];
+  state.io = [
+    {plc:'2站', address:'I0.0', type:'DI', name:'启动按钮', symbol:'S2', comment:'1=按下'},
+    {plc:'2站', address:'I0.1', type:'DI', name:'停止按钮', symbol:'S3', comment:'1=正常 0=按下'},
+    {plc:'2站', address:'I0.2', type:'DI', name:'上料点有料', symbol:'B3', comment:'1=有料'},
+    {plc:'2站', address:'Q0.0', type:'DO', name:'搬运电机使能', symbol:'K1', comment:'1=运动'},
+    {plc:'3站', address:'I0.0', type:'DI', name:'启动按钮', symbol:'S2', comment:'1=按下'}
+  ];
+  state.flows = [
+    {plc:'2站', text:'复位档按启动→升降抬起→夹爪松开→搬运回右侧位；手动档按启动→输送带启动送料→等到料→下降→夹取→上升→右行→下降→松开→上升，完毕停止；自动档按启动→循环执行。下降/抓取/抬升处各延时 0.5s。'},
+    {plc:'3站', text:'到位后检测高度，NG 输出报警并停机。'}
+  ];
+  state.blocks = ['报警','通讯'];
+  state.modes.forEach(m=>{ m.plc = '2站'; });
+  $('projName').value = '高度检测演示';
+  renderPlcs(); renderIo(); renderFlows(); renderBlocks(); refreshChips();
+}
+const panelFromHash = (location.hash||'').replace('#','');
+const hashIdx = panels.indexOf(panelFromHash);
+if(hashIdx >= 0) show(hashIdx);
 
 refreshChips();
 </script>
