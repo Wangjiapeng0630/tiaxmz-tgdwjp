@@ -72,6 +72,7 @@ td .mini{width:70px}
 .toast{position:fixed;right:24px;bottom:76px;background:#12222c;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none}
 .toast.show{opacity:1;transform:none}
 .hint{font-size:12px;color:var(--muted);margin-top:6px}
+.plc-block{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:#fff}
 .mode-row{display:flex;gap:8px;margin-bottom:8px}
 .mode-row input:first-child{max-width:120px}
 </style>
@@ -96,31 +97,23 @@ td .mini{width:70px}
     <div class="content">
       <!-- ① PLC 型号 -->
       <section class="panel active" id="panel-plc">
-        <h1>选择 PLC 型号</h1>
-        <div class="sub">像 STM32CubeMX 选芯片一样选 CPU；找不到就用自定义输入订货号。</div>
-        <div class="card">
-          <h2>系列与型号</h2>
-          <div class="row" style="margin-bottom:12px">
-            <div><label>系列</label><select id="familySel"></select></div>
-            <div><label>TIA Portal 版本</label>
-              <select id="tiaSel"><option>V21</option><option>V20</option><option>V18</option></select>
-            </div>
-            <div><label>固件版本</label><select id="fwSel"></select></div>
-            <div><label>设备名（工程内）</label><input type="text" id="deviceName" value="PLC_1"></div>
-          </div>
-          <div class="model-grid" id="modelGrid"></div>
-          <label>自定义订货号（可选，覆盖上方选择）</label>
-          <input type="text" id="customMlfb" placeholder="例：6ES7215-1AG40-0XB0">
-          <div class="row" style="margin-top:8px">
-            <div><label>自定义型号名</label><input type="text" id="customModel" placeholder="例：CPU 1215C DC/DC/DC"></div>
-          </div>
-        </div>
+        <h1>PLC 设备与网络</h1>
+        <div class="sub">可添加多台 PLC；每台设置 PN/IE 接口与 IPv4 地址。TIA 版本为整个项目的目标版本。</div>
         <div class="card">
           <h2>项目信息</h2>
           <div class="row">
             <div><label>项目名称</label><input type="text" id="projName" placeholder="例：主件供料站"></div>
+            <div style="flex:0 0 160px"><label>TIA Portal 版本</label>
+              <select id="tiaSel"><option>V21</option><option>V20</option><option>V18</option></select>
+            </div>
             <div><label>工作备注（可选）</label><input type="text" id="projNote" placeholder="给 Agent 的补充说明"></div>
           </div>
+        </div>
+        <div class="card">
+          <h2>PLC 设备列表 <span class="tag" id="plcCount">1 台</span></h2>
+          <div id="plcList"></div>
+          <button class="btn ghost sm" id="btnAddPlc">+ 添加 PLC</button>
+          <div class="hint">多台 PLC 时按住同一子网规划 IP（如 192.168.0.1 / .2 / .3）；PN/IE 接口用于站间通信。</div>
         </div>
       </section>
 
@@ -238,7 +231,8 @@ const MODELS = [
   {family:'S7-1500', model:'CPU 1516-3 PN/DP', mlfb:'6ES7516-3AN02-0AB0', fw:'V2.9'}
 ];
 const state = {
-  sel: null, io: [], ioImages: [],
+  plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1', ip:'192.168.0.1', subnet:'255.255.255.0'}],
+  io: [], ioImages: [],
   modes: [
     {name:'复位', trigger:'复位信号=1 时按启动按钮'},
     {name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
@@ -265,35 +259,66 @@ $('btnPrev').onclick = ()=>show(cur-1);
 $('btnNext').onclick = ()=>show(cur+1);
 $('btnGoGen').onclick = ()=>{ show(4); doGen(); };
 
-/* ---------- ① 型号 ---------- */
+/* ---------- ① PLC 设备（多台 + PN/IE 网络） ---------- */
 const FW = {
   'S7-1200': ['V4.1','V4.2','V4.3','V4.4','V4.5','V4.6','V4.7'],
   'S7-1500': ['V2.8','V2.9','V3.0','V3.1']
 };
-function renderFw(){
-  const fam = $('familySel').value;
-  const list = FW[fam] || ['V4.5'];
-  $('fwSel').innerHTML = list.map(v=>`<option>${v}</option>`).join('');
-  $('fwSel').value = (state.sel && state.sel.family===fam && list.includes(state.sel.fw)) ? state.sel.fw : list.includes('V4.5') ? 'V4.5' : list[list.length-1];
+const FAMS = [...new Set(MODELS.map(m=>m.family))];
+function modelOpts(p){
+  const known = MODELS.some(m=>m.mlfb===p.mlfb);
+  return FAMS.map(f=>`<optgroup label="${f}">`+MODELS.filter(m=>m.family===f).map(m=>`<option value="${m.mlfb}" ${p.mlfb===m.mlfb?'selected':''}>${m.model}</option>`).join('')+`</optgroup>`).join('')
+    + `<option value="__custom__" ${known?'':'selected'}>自定义…</option>`;
 }
-function renderModels(){
-  const fam = $('familySel').value;
-  renderFw();
-  $('modelGrid').innerHTML = MODELS.filter(m=>m.family===fam).map((m,i)=>`
-    <div class="model-card ${state.sel&&state.sel.mlfb===m.mlfb?'sel':''}" data-mlfb="${m.mlfb}">
-      <div class="m-name">${m.model}</div>
-      <div class="m-mlfb">${m.mlfb}</div>
-      <div class="m-fw">固件 ${m.fw}</div>
-    </div>`).join('');
-  document.querySelectorAll('#modelGrid .model-card').forEach(c=>c.onclick=()=>{
-    state.sel = MODELS.find(m=>m.mlfb===c.dataset.mlfb);
-    $('fwSel').value = state.sel.fw;
-    renderModels(); refreshChips();
+function renderPlcs(){
+  $('plcCount').textContent = state.plcs.length + ' 台';
+  $('plcList').innerHTML = state.plcs.map((p,i)=>{
+    const fw = FW[p.family] || ['V4.5'];
+    return `<div class="plc-block">
+      <div class="row">
+        <div style="flex:0 0 110px"><label>设备名</label><input value="${p.name}" data-pi="${i}" data-pf="name"></div>
+        <div style="flex:0 0 110px"><label>系列</label><select data-pi="${i}" data-pf="family">${FAMS.map(f=>`<option ${f===p.family?'selected':''}>${f}</option>`).join('')}</select></div>
+        <div><label>型号</label><select data-pi="${i}" data-pf="modelSel">${modelOpts(p)}</select></div>
+        <div style="flex:0 0 180px"><label>订货号 MLFB</label><input value="${p.mlfb}" data-pi="${i}" data-pf="mlfb" placeholder="6ES7..."></div>
+      </div>
+      <div class="row">
+        <div style="flex:0 0 160px"><label>型号名</label><input value="${p.model}" data-pi="${i}" data-pf="model"></div>
+        <div style="flex:0 0 100px"><label>固件</label><select data-pi="${i}" data-pf="firmware">${fw.map(v=>`<option ${v===p.firmware?'selected':''}>${v}</option>`).join('')}</select></div>
+        <div style="flex:0 0 110px"><label>接口类型</label><select data-pi="${i}" data-pf="ifaceType"><option ${p.ifaceType==='PN/IE'?'selected':''}>PN/IE</option></select></div>
+        <div style="flex:0 0 130px"><label>接口名</label><input value="${p.iface}" data-pi="${i}" data-pf="iface"></div>
+        <div style="flex:0 0 150px"><label>IPv4 地址</label><input value="${p.ip}" data-pi="${i}" data-pf="ip"></div>
+        <div style="flex:0 0 150px"><label>子网掩码</label><input value="${p.subnet}" data-pi="${i}" data-pf="subnet"></div>
+        <div style="flex:0 0 60px;display:flex;align-items:flex-end"><button class="btn danger sm" data-pdel="${i}">删除</button></div>
+      </div>
+    </div>`;
+  }).join('');
+  $('plcList').querySelectorAll('[data-pf]').forEach(el=>{
+    el.onchange = e=>{
+      const i = +e.target.dataset.pi, f = e.target.dataset.pf, p = state.plcs[i];
+      if(f === 'modelSel'){
+        const m = MODELS.find(x=>x.mlfb===e.target.value);
+        if(m){ p.model=m.model; p.mlfb=m.mlfb; p.family=m.family; p.firmware=m.fw; }
+        else { p.mlfb=''; }
+        renderPlcs(); refreshChips();
+      } else if(f === 'family'){
+        p.family = e.target.value; p.model=''; p.mlfb=''; p.firmware=(FW[p.family]||['V4.5'])[0];
+        renderPlcs(); refreshChips();
+      } else {
+        p[f] = e.target.value; refreshChips();
+      }
+    };
+  });
+  $('plcList').querySelectorAll('[data-pdel]').forEach(b=>b.onclick=e=>{
+    state.plcs.splice(+e.target.dataset.pdel, 1); renderPlcs(); refreshChips();
   });
 }
-$('familySel').innerHTML = [...new Set(MODELS.map(m=>m.family))].map(f=>`<option>${f}</option>`).join('');
-$('familySel').onchange = renderModels;
-renderModels();
+$('btnAddPlc').onclick = ()=>{
+  const n = state.plcs.length + 1;
+  state.plcs.push({name:'PLC_'+n, family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_'+n, ip:'192.168.0.'+n, subnet:'255.255.255.0'});
+  renderPlcs(); refreshChips();
+  toast('已添加 PLC_'+n);
+};
+renderPlcs();
 
 /* ---------- ② IO 解析 ---------- */
 function parseIo(text){
@@ -392,21 +417,14 @@ $('langLAD').onclick = ()=>{ state.lang='LAD'; $('langLAD').classList.add('sel')
 $('langSCL').onclick = ()=>{ state.lang='SCL'; $('langSCL').classList.add('sel'); $('langLAD').classList.remove('sel'); refreshChips(); };
 
 /* ---------- 摘要 ---------- */
-function plcInfo(){
-  const custom = $('customMlfb').value.trim();
-  if(custom) return {family:$('familySel').value, model:$('customModel').value.trim()||'自定义', mlfb:custom, firmware:$('fwSel').value};
-  if(state.sel) return {family:state.sel.family, model:state.sel.model, mlfb:state.sel.mlfb, firmware:$('fwSel').value};
-  return null;
-}
 function refreshChips(){
-  const p = plcInfo();
   $('chips').innerHTML = [
-    `型号 <b>${p? p.model.split(' ').slice(0,3).join(' '):'未选'}</b>`,
+    `PLC <b>${state.plcs.length}</b> 台`,
     `IO <b>${state.io.length}</b> 点`,
     `流程 <b>${state.steps.length}</b> 步`,
     `语言 <b>${state.lang}</b>`
   ].map(h=>`<span class="chip">${h}</span>`).join('');
-  $('tick-plc').textContent = p?'✓':'';
+  $('tick-plc').textContent = state.plcs.length?'✓':'';
   $('tick-io').textContent = state.io.length?'✓':'';
   $('tick-flow').textContent = state.steps.length?'✓':'';
   $('tick-lang').textContent = '✓';
@@ -414,13 +432,13 @@ function refreshChips(){
 
 /* ---------- ⑤ 生成 ---------- */
 function buildConfig(){
-  const p = plcInfo();
   return {
     version: 1,
     generator: 'PLC Project Wizard v1',
     generatedAt: new Date().toISOString(),
+    tiaVersion: $('tiaSel').value,
     project: { name: $('projName').value.trim() || '未命名项目', note: $('projNote').value.trim() },
-    plc: p ? {...p, tiaVersion: $('tiaSel').value, deviceName: $('deviceName').value.trim() || 'PLC_1'} : null,
+    plcs: state.plcs.map((p,i)=>({no:i+1, ...p})),
     language: state.lang,
     languageNote: $('langNote').value.trim(),
     signalConvention: { note: $('signalNote').value.trim() || '停止/急停常闭：1=正常 0=动作；停止=当前步暂停，急停=输出全切并锁定' },
@@ -432,15 +450,16 @@ function buildConfig(){
   };
 }
 function doGen(){
-  const p = plcInfo();
-  if(!p){ toast('请先选择 PLC 型号'); show(0); return; }
+  if(!state.plcs.length){ toast('请至少添加一台 PLC'); show(0); return; }
+  if(state.plcs.some(x=>!x.mlfb)){ toast('有 PLC 未填订货号'); show(0); return; }
   if(!state.io.length){ toast('请先导入 IO 点'); show(1); return; }
   if(!state.steps.length){ toast('请先编排设备流程'); show(2); return; }
   const cfg = buildConfig();
   $('jsonOut').value = JSON.stringify(cfg, null, 2);
   $('genSummary').innerHTML = [
     `项目：<b>${cfg.project.name}</b>`,
-    `PLC：<b>${p.model}</b>（${p.mlfb}，${p.firmware}）`,
+    `TIA：<b>${$('tiaSel').value}</b>`,
+    `PLC：<b>${state.plcs.length}</b> 台（${state.plcs.map(p=>p.model+' @ '+p.ip).join('；')}）`,
     `IO：<b>${state.io.length}</b> 点（DI ${state.io.filter(t=>t.type==='DI').length} / DO ${state.io.filter(t=>t.type==='DO').length}）`,
     `模式：<b>${state.modes.map(m=>m.name).join(' / ')||'—'}</b>`,
     `流程：<b>${state.steps.length}</b> 步`,
