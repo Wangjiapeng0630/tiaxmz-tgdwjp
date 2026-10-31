@@ -29,7 +29,6 @@
   "languageNote": "语言偏好说明",
   "signalConvention": { "note": "停止/急停常闭：1=正常 0=动作…" },
   "io": [ { "no": 1, "plc": "PLC_1", "address": "I0.0", "type": "DI|DO|M", "name": "启动按钮", "symbol": "S1", "comment": "S2 启动按钮：1=按下" } ],
-  "ioImages": ["io表.png"],
   "modes": [ { "name": "复位", "trigger": "复位信号=1 时按启动按钮" } ],
   "steps": [ { "no": 1, "action": "输送启动+搬运左行回初始位", "done": "搬运初始位 且 上料点有料", "delayMs": 0 } ],
   "notes": "自由备注"
@@ -43,7 +42,7 @@
 > **留空语义**：`io` / `steps` / `modes` / `signalConvention.note` 等允许为空数组或空串——表示使用者未填。Agent **不得臆造**：按 skill 的材料清单补问，或先生成可填的空骨架。**必填项只有 PLC 型号（`plcs[].mlfb`）**。
 
 1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`；PN/IE 网络按 `iface/ip/subnet` 配置（MCP 网络工具如 `ConnectDeviceNodesToProfinetSubnet`，IP 可在设备属性设置；多台 PLC 时按同子网规划地址）。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。
-2. **io** → 任务 2 变量表：按 `plc` 分组到各 PLC 的变量表（`name` 中文变量名，`address` 地址，`comment` 注释）；`ioImages` 里的图片用视觉识别补齐/校核（向导本地 Windows OCR 已识别的行以点表为准）。
+2. **io** → 任务 2 变量表：按 `plc` 分组到各 PLC 的变量表（`name` 中文变量名，`address` 地址，`comment` 注释）。来源：向导粘贴文本/表格或 Excel(.xlsx)/Word(.docx) 文件本地解析。
 3. **modes + steps + signalConvention** → 任务 3 提纯素材：整理成模式×序列表 + 信号约定，**回呈使用者确认**后才进任务 4。
 4. **steps** → 流程步模板：步号 ×5（1,5,10,…）按 `no` 顺序展开；`delayMs>0` 的步在到位后串 `TON(PT:=T#<delay>MS)`；`done` 为完成判据传感器条件。
 5. **language** → 任务 5：`LAD` 按梯形图模板；`SCL` 用 LAD 块头 + `{ S7_Language := "SCL" }` 网络写 SCL 语句（TIA 导入兼容形式）。

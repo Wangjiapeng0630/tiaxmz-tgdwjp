@@ -134,14 +134,14 @@ td .mini{width:70px}
           </div>
         </div>
         <div class="card">
-          <h2>图片识别导入</h2>
-          <input type="file" id="ioImage" accept="image/*" multiple>
-          <div class="hint" id="ioImageList"></div>
+          <h2>Excel / Word 导入</h2>
+          <input type="file" id="ioFile" accept=".xlsx,.xlsm,.docx" multiple>
+          <div class="hint" id="ioFileList"></div>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
-            <button class="btn" id="btnOcr">解析图片识别 IO</button>
-            <span class="hint">本地离线识别（Windows OCR）：密集表格可能有错位/丢字，请逐行核对修正；要更高精度可把图片直接发给 Agent 视觉识别</span>
+            <button class="btn" id="btnParseFile">解析文件导入</button>
+            <span class="hint">本地离线解析 .xlsx / .docx 表格中的 IO 点（含地址的行自动识别），导入到上方所选 PLC</span>
           </div>
-          <div class="hint" id="ocrStatus"></div>
+          <div class="hint" id="fileStatus"></div>
         </div>
         <div class="card">
           <h2>点表 <span class="tag" id="ioCount">0 点</span></h2>
@@ -242,7 +242,7 @@ const MODELS = [
 ];
 const state = {
   plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1', ip:'192.168.0.1', subnet:'255.255.255.0'}],
-  io: [], ioImages: [], ioFiles: [],
+  io: [], ioFiles: [],
   modes: [
     {name:'复位', trigger:'复位信号=1 时按启动按钮'},
     {name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
@@ -397,33 +397,33 @@ $('btnAddRow').onclick = ()=>{
   state.io.push({plc:$('ioTargetPlc').value, address:'I0.'+state.io.length, type:'DI', name:'', symbol:'', comment:''});
   renderIo(); refreshChips();
 };
-$('ioImage').onchange = e=>{
+$('ioFile').onchange = e=>{
   state.ioFiles = [...e.target.files];
-  state.ioImages = state.ioFiles.map(f=>f.name);
-  $('ioImageList').textContent = state.ioImages.length ? '已选图片：'+state.ioImages.join('、') : '';
+  $('ioFileList').textContent = state.ioFiles.length ? '已选文件：'+state.ioFiles.map(f=>f.name).join('、') : '';
 };
-$('btnOcr').onclick = async ()=>{
-  if(!state.ioFiles || !state.ioFiles.length){ toast('先选择图片'); return; }
-  $('ocrStatus').textContent = '识别中…（Windows 本地 OCR，图片大可能要几秒）';
+$('btnParseFile').onclick = async ()=>{
+  if(!state.ioFiles || !state.ioFiles.length){ toast('先选择 Excel/Word 文件'); return; }
   const plc = $('ioTargetPlc').value;
+  $('fileStatus').textContent = '解析中…';
   let total = 0;
   for(const f of state.ioFiles){
     try{
-      const r = await fetch('/api/ocr', {method:'POST', headers:{'Content-Type':'application/octet-stream'}, body: f});
+      const r = await fetch('/api/parse-table', {method:'POST', headers:{'Content-Type':'application/octet-stream','X-Filename':f.name}, body: f});
       const d = await r.json();
-      if(d.ok && d.text.trim()){
-        const rows = parseIo(d.text, true, plc);
-        state.io = state.io.concat(rows);
-        total += rows.length;
+      if(d.ok && d.rows && d.rows.length){
+        state.io = state.io.concat(d.rows.map(t=>({plc, ...t})));
+        total += d.rows.length;
+      } else if(!d.ok){
+        $('fileStatus').textContent = '解析失败：'+(d.error||'未知');
       } else {
-        $('ocrStatus').textContent = '识别失败：'+(d.text||'无结果')+'（图片名将随配置交给 Agent 视觉识别）';
+        $('fileStatus').textContent = f.name+' 中没有找到 IO 地址（I0.0/Q0.0 这类）';
       }
     }catch(err){
-      $('ocrStatus').textContent = '本地识别服务不可用（请用 python serve.py 启动向导）；图片名将随配置交给 Agent 视觉识别。';
+      $('fileStatus').textContent = '本地解析服务不可用（请用 python serve.py 启动向导）。';
       break;
     }
   }
-  if(total){ renderIo(); refreshChips(); $('ocrStatus').textContent = '识别完成：新增 '+total+' 个点（'+plc+'），请逐行核对。'; toast('图片识别完成，新增 '+total+' 点'); }
+  if(total){ renderIo(); refreshChips(); $('fileStatus').textContent = '解析完成：新增 '+total+' 个点（'+plc+'），请逐行核对。'; toast('导入完成，新增 '+total+' 点'); }
 };
 refreshIoTargets();
 
@@ -494,7 +494,6 @@ function buildConfig(){
     languageNote: $('langNote').value.trim(),
     signalConvention: { note: $('signalNote').value.trim() || '停止/急停常闭：1=正常 0=动作；停止=当前步暂停，急停=输出全切并锁定' },
     io: state.io.map((t,i)=>({no:i+1, ...t})),
-    ioImages: state.ioImages,
     modes: state.modes,
     steps: state.steps.map((s,i)=>({no:i+1, ...s})),
     notes: $('projNote').value.trim()
