@@ -38,6 +38,8 @@
 
 ## 解析要点（Agent）
 
+> **交付通道**：向导页由 `wizard/serve.py` 提供服务时，「一键生成」会把配置写入 `~/Documents/PLCWizard/project.json` 并自动执行 `mimo run "按配置生成项目：读取当前目录 project.json……"` 发起一次 AI 执行；该执行里的 Agent 按本文件解析并走 skill 六步流程。非 serve.py 服务时回退为下载 project.json 人工交办。
+
 > **留空语义**：`io` / `steps` / `modes` / `signalConvention.note` 等允许为空数组或空串——表示使用者未填。Agent **不得臆造**：按 skill 的材料清单补问，或先生成可填的空骨架。**必填项只有 PLC 型号（`plcs[].mlfb`）**。
 
 1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`；PN/IE 网络按 `iface/ip/subnet` 配置（MCP 网络工具如 `ConnectDeviceNodesToProfinetSubnet`，IP 可在设备属性设置；多台 PLC 时按同子网规划地址）。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。
