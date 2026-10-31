@@ -157,7 +157,7 @@ td .mini{width:70px}
           <h2>动作序列（文字描述） <span class="tag" id="flowCount">0 段</span></h2>
           <div id="flowRows"></div>
           <button class="btn ghost sm" id="btnAddFlow">+ 加一段（按 PLC）</button>
-          <div class="hint">例：复位档按启动→升降抬起→夹爪松开→搬运回右侧位；手动档按启动→输送带启动送料→等到料→下降→夹取→上升→右行→下降→松开→上升，完毕停止不循环；自动档按启动→循环执行。哪里要延时、多少 ms 也直接写在文字里。</div>
+          <div class="hint">例：复位档按启动→升降抬起→夹爪松开→搬运回右侧位；手动档按启动→输送带启动送料→等到料→下降→夹取→上升→右行→下降→松开→上升，完毕停止不循环；自动档按启动→循环执行。哪里要延时、多少 ms 也直接写在文字里。<b>什么都不填：生成的项目只有一个空 Main 程序。</b></div>
           <label>信号约定与停止/急停行为</label>
           <textarea id="signalNote" placeholder="例：停止/急停均为常闭，1=正常 0=动作；停止=当前步暂停再启动续跑；急停=切断全部输出并锁定，需重新启动"></textarea>
         </div>
@@ -497,7 +497,7 @@ function doGen(){
   ].join(' &nbsp;·&nbsp; ');
   const gaps = [];
   if(!state.io.length && !state.attachments.length) gaps.push('IO（点表与附件）');
-  if(!state.flows.length) gaps.push('流程描述');
+  if(!state.flows.length) gaps.push('流程描述（将只生成空 Main 程序）');
   if(!state.modes.length) gaps.push('模式');
   if(gaps.length) $('genSummary').innerHTML += `<div class="hint" style="margin-top:6px">⚠ ${gaps.join('、')}未填——配置中留空，Agent 会按材料清单向你补问。</div>`;
   const payload = JSON.stringify(cfg, null, 2);
