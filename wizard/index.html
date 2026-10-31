@@ -74,7 +74,8 @@ td .mini{width:70px}
 .hint{font-size:12px;color:var(--muted);margin-top:6px}
 .plc-block{border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:#fff}
 .mode-row{display:flex;gap:8px;margin-bottom:8px}
-.mode-row input:first-child{max-width:120px}
+.mode-row input:first-of-type{max-width:120px}
+.mode-row select{flex:0 0 110px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font:inherit;background:#fff}
 </style>
 </head>
 <body>
@@ -145,25 +146,25 @@ td .mini{width:70px}
 
       <!-- ③ 设备流程 -->
       <section class="panel" id="panel-flow">
-        <h1>设备流程编排</h1>
-        <div class="sub">按执行顺序列出动作与完成判据；模式触发写清楚，Agent 会先提纯回来给你确认。</div>
+        <h1>设备流程</h1>
+        <div class="sub">动作序列直接用文字描述即可，AI 会提纯成流程步并回你确认；多台 PLC 时按台区分。</div>
         <div class="card">
           <h2>模式与触发</h2>
           <div id="modeRows"></div>
           <button class="btn ghost sm" id="btnAddMode">+ 加模式</button>
         </div>
         <div class="card">
-          <h2>动作序列 <span class="tag" id="stepCount">0 步</span></h2>
-          <table>
-            <thead><tr><th style="width:50px">步</th><th>动作（执行器做什么）</th><th>完成判据（哪个传感器）</th><th style="width:100px">延时(ms)</th><th style="width:60px"></th></tr></thead>
-            <tbody id="stepBody"></tbody>
-          </table>
-          <div style="margin-top:10px;display:flex;gap:10px">
-            <button class="btn ghost sm" id="btnAddStep">+ 加一步</button>
-            <button class="btn danger sm" id="btnClearSteps">清空</button>
-          </div>
+          <h2>动作序列（文字描述） <span class="tag" id="flowCount">0 段</span></h2>
+          <div id="flowRows"></div>
+          <button class="btn ghost sm" id="btnAddFlow">+ 加一段（按 PLC）</button>
+          <div class="hint">例：复位档按启动→升降抬起→夹爪松开→搬运回右侧位；手动档按启动→输送带启动送料→等到料→下降→夹取→上升→右行→下降→松开→上升，完毕停止不循环；自动档按启动→循环执行。哪里要延时、多少 ms 也直接写在文字里。</div>
           <label>信号约定与停止/急停行为</label>
           <textarea id="signalNote" placeholder="例：停止/急停均为常闭，1=正常 0=动作；停止=当前步暂停再启动续跑；急停=切断全部输出并锁定，需重新启动"></textarea>
+        </div>
+        <div class="card">
+          <h2>添加块（程序块库）</h2>
+          <div class="sub" style="margin-bottom:10px">框架四块（按钮/动作/流程/模式）与 全局/沿 DB 固定包含；下面是库中可选块，勾选即加入项目。</div>
+          <div id="blockLib"></div>
         </div>
       </section>
 
@@ -235,11 +236,11 @@ const state = {
   plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1', ip:'192.168.0.1', subnet:'255.255.255.0'}],
   io: [], attachments: [],
   modes: [
-    {name:'复位', trigger:'复位信号=1 时按启动按钮'},
-    {name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
-    {name:'自动循环', trigger:'手/自动=1 时按启动按钮'}
+    {plc:'PLC_1', name:'复位', trigger:'复位信号=1 时按启动按钮'},
+    {plc:'PLC_1', name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
+    {plc:'PLC_1', name:'自动循环', trigger:'手/自动=1 时按启动按钮'}
   ],
-  steps: [], lang: 'LAD'
+  flows: [], blocks: [], lang: 'LAD'
 };
 const $ = id => document.getElementById(id);
 const toast = m => { const t=$('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200); };
@@ -373,41 +374,72 @@ $('ioFile').onchange = e=>{
 };
 refreshIoTargets();
 
-/* ---------- ③ 流程 ---------- */
+/* ---------- ③ 流程（模式/文字描述/库块） ---------- */
+const BLOCK_LIB = [
+  {key:'报警', desc:'超时报警 FB：动作 N 秒无到位→报警位，汇总进报警字（Word 位打包）'},
+  {key:'通讯', desc:'站间通讯 FC：PUT/GET 数据交换与站间完成握手（需各台配好 PN/IE 与 IPv4）'},
+  {key:'轴控', desc:'轴控 FC：步进/伺服轴 MC_Power/MC_Halt/MC_MoveJog/MC_Reset 与故障复位'},
+  {key:'计时', desc:'节拍计时：TONR 累计当前节拍，MAX 取最慢节拍（产线节拍统计）'},
+  {key:'产量', desc:'产量统计：CTU 计数 + 生产进度百分比（SCL 混编）'},
+  {key:'HMI', desc:'HMI 画面：WinCC Unified 面板画面与变量绑定（二期扩展）'}
+];
 function renderModes(){
   $('modeRows').innerHTML = state.modes.map((m,i)=>`
     <div class="mode-row">
+      <select data-mi="${i}" data-mf="plc">${plcOptions(m.plc)}</select>
       <input value="${m.name}" data-mi="${i}" data-mf="name" placeholder="模式名">
-      <input value="${m.trigger}" data-mi="${i}" data-mf="trigger" placeholder="触发方式">
+      <input value="${m.trigger}" data-mi="${i}" data-mf="trigger" placeholder="触发方式（什么信号+什么按钮）">
       <button class="btn danger sm" data-mdel="${i}">删</button>
     </div>`).join('');
-  $('modeRows').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+  $('modeRows').querySelectorAll('input,select').forEach(inp=>inp.onchange=e=>{
     state.modes[+e.target.dataset.mi][e.target.dataset.mf] = e.target.value.trim();
   });
   $('modeRows').querySelectorAll('[data-mdel]').forEach(b=>b.onclick=e=>{
     state.modes.splice(+e.target.dataset.mdel,1); renderModes();
   });
 }
-function renderSteps(){
-  $('stepCount').textContent = state.steps.length + ' 步';
-  $('stepBody').innerHTML = state.steps.map((s,i)=>`<tr>
-    <td>${i+1}</td>
-    <td><input value="${s.action}" data-si="${i}" data-sf="action" placeholder="例：升降气缸下降"></td>
-    <td><input value="${s.done}" data-si="${i}" data-sf="done" placeholder="例：升降落下到位=1"></td>
-    <td><input type="number" class="mini" value="${s.delayMs}" data-si="${i}" data-sf="delayMs" min="0" step="100"></td>
-    <td><button class="btn danger sm" data-sdel="${i}">删</button></td>
-  </tr>`).join('');
-  $('stepBody').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
-    const f = e.target.dataset.sf;
-    state.steps[+e.target.dataset.si][f] = f==='delayMs' ? (+e.target.value||0) : e.target.value.trim();
+$('btnAddMode').onclick = ()=>{
+  state.modes.push({plc:(state.plcs[0]||{name:'PLC_1'}).name, name:'', trigger:''});
+  renderModes();
+};
+function renderFlows(){
+  $('flowCount').textContent = state.flows.length + ' 段';
+  $('flowRows').innerHTML = state.flows.map((f,i)=>`
+    <div style="margin-bottom:10px">
+      <div class="row" style="margin-bottom:4px">
+        <div style="flex:0 0 160px"><select data-fi="${i}" data-ff="plc">${plcOptions(f.plc)}</select></div>
+        <div style="flex:none"><button class="btn danger sm" data-fdel="${i}">删</button></div>
+      </div>
+      <textarea data-fi="${i}" data-ff="text" placeholder="用你自己的话写这台 PLC 的动作流程（顺序、判据、延时都写进去）…">${f.text}</textarea>
+    </div>`).join('');
+  $('flowRows').querySelectorAll('textarea,select').forEach(el=>el.onchange=e=>{
+    state.flows[+e.target.dataset.fi][e.target.dataset.ff] = e.target.value;
+    refreshChips();
   });
-  $('stepBody').querySelectorAll('[data-sdel]').forEach(b=>b.onclick=e=>{
-    state.steps.splice(+e.target.dataset.sdel,1); renderSteps(); refreshChips();
+  $('flowRows').querySelectorAll('[data-fdel]').forEach(b=>b.onclick=e=>{
+    state.flows.splice(+e.target.dataset.fdel,1); renderFlows(); refreshChips();
   });
 }
-$('btnAddStep').onclick = ()=>{ state.steps.push({action:'', done:'', delayMs:0}); renderSteps(); refreshChips(); };
-$('btnClearSteps').onclick = ()=>{ state.steps = []; renderSteps(); refreshChips(); };
-renderModes();
+$('btnAddFlow').onclick = ()=>{
+  state.flows.push({plc:(state.plcs[0]||{name:'PLC_1'}).name, text:''});
+  renderFlows(); refreshChips();
+};
+function renderBlocks(){
+  $('blockLib').innerHTML = BLOCK_LIB.map(b=>{
+    const on = state.blocks.includes(b.key);
+    return `<label class="model-card ${on?'sel':''}" style="display:block;cursor:pointer">
+      <input type="checkbox" data-bk="${b.key}" ${on?'checked':''} style="width:auto;margin-right:6px"><b>${b.key}</b>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">${b.desc}</div>
+    </label>`;
+  }).join('');
+  $('blockLib').querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=e=>{
+    const k = e.target.dataset.bk;
+    if(e.target.checked){ if(!state.blocks.includes(k)) state.blocks.push(k); }
+    else state.blocks = state.blocks.filter(x=>x!==k);
+    renderBlocks();
+  });
+}
+renderModes(); renderFlows(); renderBlocks();
 
 /* ---------- ④ 语言 ---------- */
 $('langLAD').onclick = ()=>{ state.lang='LAD'; $('langLAD').classList.add('sel'); $('langSCL').classList.remove('sel'); refreshChips(); };
@@ -418,12 +450,12 @@ function refreshChips(){
   $('chips').innerHTML = [
     `PLC <b>${state.plcs.length}</b> 台`,
     `IO <b>${state.io.length}</b> 点${state.attachments.length?` · <b>${state.attachments.length}</b> 附件`:''}`,
-    `流程 <b>${state.steps.length}</b> 步`,
+    `流程 <b>${state.flows.length}</b> 段`,
     `语言 <b>${state.lang}</b>`
   ].map(h=>`<span class="chip">${h}</span>`).join('');
   $('tick-plc').textContent = state.plcs.length?'✓':'';
   $('tick-io').textContent = (state.io.length || state.attachments.length)?'✓':'';
-  $('tick-flow').textContent = state.steps.length?'✓':'';
+  $('tick-flow').textContent = state.flows.length?'✓':'';
   $('tick-lang').textContent = '✓';
 }
 
@@ -442,7 +474,8 @@ function buildConfig(){
     io: state.io.map((t,i)=>({no:i+1, ...t})),
     attachments: state.attachments.map(a=>({name:a.name, kind:a.kind, dataBase64:a.dataBase64})),
     modes: state.modes,
-    steps: state.steps.map((s,i)=>({no:i+1, ...s})),
+    flows: state.flows,
+    blocks: state.blocks,
     notes: $('projNote').value.trim()
   };
 }
@@ -459,12 +492,12 @@ function doGen(){
     `PLC：<b>${state.plcs.length}</b> 台（${state.plcs.map(p=>p.model+' @ '+p.ip).join('；')}）`,
     `IO：<b>${state.io.length}</b> 点（DI ${state.io.filter(t=>t.type==='DI').length} / DO ${state.io.filter(t=>t.type==='DO').length}）`,
     `模式：<b>${state.modes.map(m=>m.name).join(' / ')||'—'}</b>`,
-    `流程：<b>${state.steps.length}</b> 步`,
+    `流程：<b>${state.flows.length}</b> 段 · 库块 <b>${state.blocks.length}</b>`,
     `语言：<b>${state.lang}</b>`
   ].join(' &nbsp;·&nbsp; ');
   const gaps = [];
   if(!state.io.length && !state.attachments.length) gaps.push('IO（点表与附件）');
-  if(!state.steps.length) gaps.push('流程步');
+  if(!state.flows.length) gaps.push('流程描述');
   if(!state.modes.length) gaps.push('模式');
   if(gaps.length) $('genSummary').innerHTML += `<div class="hint" style="margin-top:6px">⚠ ${gaps.join('、')}未填——配置中留空，Agent 会按材料清单向你补问。</div>`;
   const payload = JSON.stringify(cfg, null, 2);

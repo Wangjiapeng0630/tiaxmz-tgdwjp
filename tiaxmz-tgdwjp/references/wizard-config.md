@@ -30,8 +30,9 @@
   "signalConvention": { "note": "停止/急停常闭：1=正常 0=动作…" },
   "io": [ { "no": 1, "plc": "PLC_1", "address": "I0.0", "type": "DI|DO|M", "name": "启动按钮", "symbol": "S1", "comment": "S2 启动按钮：1=按下" } ],
   "attachments": [ { "name": "IO表.png", "kind": "image|doc", "dataBase64": "…" } ],
-  "modes": [ { "name": "复位", "trigger": "复位信号=1 时按启动按钮" } ],
-  "steps": [ { "no": 1, "action": "输送启动+搬运左行回初始位", "done": "搬运初始位 且 上料点有料", "delayMs": 0 } ],
+  "modes": [ { "plc": "PLC_1", "name": "复位", "trigger": "复位信号=1 时按启动按钮" } ],
+  "flows": [ { "plc": "PLC_1", "text": "复位档按启动→升降抬起→夹爪松开→搬运回右侧位……" } ],
+  "blocks": ["报警", "通讯"],
   "notes": "自由备注"
 }
 ```
@@ -44,9 +45,10 @@
 
 1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`；PN/IE 网络按 `iface/ip/subnet` 配置（MCP 网络工具如 `ConnectDeviceNodesToProfinetSubnet`，IP 可在设备属性设置；多台 PLC 时按同子网规划地址）。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。
 2. **io + attachments** → 任务 2 变量表：`io` 为使用者逐行添加的点表（按 `plc` 分组到各 PLC）；`attachments` 为文档/图片附件（base64 内嵌）——先解码写盘，**图片用视觉识别、Office 用 python-docx/openpyxl 解析**出 IO 点，与 `io` 点表合并核对（附件提取与点表冲突时以附件原始内容为准，差异回呈确认）。
-3. **modes + steps + signalConvention** → 任务 3 提纯素材：整理成模式×序列表 + 信号约定，**回呈使用者确认**后才进任务 4。
-4. **steps** → 流程步模板：步号 ×5（1,5,10,…）按 `no` 顺序展开；`delayMs>0` 的步在到位后串 `TON(PT:=T#<delay>MS)`；`done` 为完成判据传感器条件。
-5. **language** → 任务 5：`LAD` 按梯形图模板；`SCL` 用 LAD 块头 + `{ S7_Language := "SCL" }` 网络写 SCL 语句（TIA 导入兼容形式）。
+3. **modes + flows + signalConvention** → 任务 3 提纯素材：`modes`（按 `plc` 分组，含触发）+ `flows[].text`（使用者对每台 PLC 的自由文字描述）+ 信号约定，整理成模式×序列表回呈确认。
+4. **flows** → 任务 3/4：把 `text` 提纯成流程步序列（步号 ×5）与完成判据；延时信息若写在文字里则转 `TON`。
+5. **blocks** → 任务 4 可选库块（`报警`超时报警 FB / `通讯`站间 PUT-GET FC / `轴控`轴控 FC / `计时`节拍 FB / `产量`产量统计 / `HMI`画面二期），勾选即在框架外追加对应块；不勾选不生成。
+6. **language** → 任务 5：`LAD` 按梯形图模板；`SCL` 用 LAD 块头 + `{ S7_Language := "SCL" }` 网络写 SCL 语句（TIA 导入兼容形式）。
 6. 缺字段/不明确处（如电机/通信/HMI 未配）按 skill 的材料清单补问，不要臆造。
 
 ## 版本
