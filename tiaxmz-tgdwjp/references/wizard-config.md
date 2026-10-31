@@ -38,6 +38,8 @@
 
 ## 解析要点（Agent）
 
+> **留空语义**：`io` / `steps` / `modes` / `signalConvention.note` 等允许为空数组或空串——表示使用者未填。Agent **不得臆造**：按 skill 的材料清单补问，或先生成可填的空骨架。**必填项只有 PLC 型号（`plcs[].mlfb`）**。
+
 1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`；PN/IE 网络按 `iface/ip/subnet` 配置（MCP 网络工具如 `ConnectDeviceNodesToProfinetSubnet`，IP 可在设备属性设置；多台 PLC 时按同子网规划地址）。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。
 2. **io** → 任务 2 变量表：`PlcBuildAndImport kind=tagtable`，变量名用 `name`（中文），注释用 `comment`，地址 `address`；`ioImages` 里的图片用视觉识别补齐/校核。
 3. **modes + steps + signalConvention** → 任务 3 提纯素材：整理成模式×序列表 + 信号约定，**回呈使用者确认**后才进任务 4。

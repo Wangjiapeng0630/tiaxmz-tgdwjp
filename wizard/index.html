@@ -190,7 +190,7 @@ td .mini{width:70px}
       <!-- ⑤ 一键生成 -->
       <section class="panel" id="panel-gen">
         <h1>一键生成</h1>
-        <div class="sub">校验配置 → 输出 project.json → 交给 Agent 一键生成 TIA 项目。</div>
+        <div class="sub">仅 PLC 型号必填，其余步骤没填就留空；生成 project.json 交给 Agent 一键生成 TIA 项目。</div>
         <div class="gen-ok" id="genOk">✓ 配置已生成并下载 project.json。把它放进工作目录，对 Agent 说「按配置生成项目」即可。</div>
         <div class="card">
           <h2>配置摘要</h2>
@@ -451,9 +451,8 @@ function buildConfig(){
 }
 function doGen(){
   if(!state.plcs.length){ toast('请至少添加一台 PLC'); show(0); return; }
-  if(state.plcs.some(x=>!x.mlfb)){ toast('有 PLC 未填订货号'); show(0); return; }
-  if(!state.io.length){ toast('请先导入 IO 点'); show(1); return; }
-  if(!state.steps.length){ toast('请先编排设备流程'); show(2); return; }
+  if(state.plcs.some(x=>!x.mlfb)){ toast('有 PLC 未填订货号（型号必填）'); show(0); return; }
+  // 其余步骤允许留空：未填的部分在配置里保持空数组/空串，由 Agent 补问
   const cfg = buildConfig();
   $('jsonOut').value = JSON.stringify(cfg, null, 2);
   $('genSummary').innerHTML = [
@@ -465,6 +464,11 @@ function doGen(){
     `流程：<b>${state.steps.length}</b> 步`,
     `语言：<b>${state.lang}</b>`
   ].join(' &nbsp;·&nbsp; ');
+  const gaps = [];
+  if(!state.io.length) gaps.push('IO 点表');
+  if(!state.steps.length) gaps.push('流程步');
+  if(!state.modes.length) gaps.push('模式');
+  if(gaps.length) $('genSummary').innerHTML += `<div class="hint" style="margin-top:6px">⚠ ${gaps.join('、')}未填——配置中留空，Agent 会按材料清单向你补问。</div>`;
   const blob = new Blob([$('jsonOut').value], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob); a.download = 'project.json'; a.click();
