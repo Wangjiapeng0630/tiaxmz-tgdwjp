@@ -120,23 +120,33 @@ td .mini{width:70px}
       <!-- ② IO 点 -->
       <section class="panel" id="panel-io">
         <h1>导入 IO 点</h1>
-        <div class="sub">支持粘贴文本/表格（地址、符号、说明、状态），自动解析成可编辑点表；图片可一并交给 Agent 识别。</div>
+        <div class="sub">多台 PLC 时先选「导入到」再解析；点表每行可单独改所属 PLC。图片支持本地离线识别。</div>
         <div class="card">
-          <h2>粘贴 IO 表</h2>
+          <h2>粘贴 IO 表（文本/表格）</h2>
+          <div class="row" style="margin-bottom:8px">
+            <div style="flex:0 0 200px"><label>导入到 PLC</label><select id="ioTargetPlc"></select></div>
+          </div>
           <textarea id="ioText" placeholder="每行一点，用 Tab / 逗号 / 竖线 / 空格分隔，例：&#10;I0.0  S1  自动/手动  0=手动 1=自动&#10;I0.1  S2  启动按钮  0=断开 1=按下&#10;Q0.0  L1  启动指示灯  0=灭 1=亮"></textarea>
           <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
             <button class="btn" id="btnParse">解析到点表</button>
             <button class="btn ghost" id="btnAddRow">手动加一行</button>
             <span class="hint">命名规范：中文、无空格；注释建议「符号 说明：状态语义」</span>
           </div>
-          <label>IO 表图片（可选，生成时连同配置一起交给 Agent 识别）</label>
+        </div>
+        <div class="card">
+          <h2>图片识别导入</h2>
           <input type="file" id="ioImage" accept="image/*" multiple>
           <div class="hint" id="ioImageList"></div>
+          <div style="margin-top:10px;display:flex;gap:10px;align-items:center">
+            <button class="btn" id="btnOcr">解析图片识别 IO</button>
+            <span class="hint">本地离线识别（Windows OCR）：密集表格可能有错位/丢字，请逐行核对修正；要更高精度可把图片直接发给 Agent 视觉识别</span>
+          </div>
+          <div class="hint" id="ocrStatus"></div>
         </div>
         <div class="card">
           <h2>点表 <span class="tag" id="ioCount">0 点</span></h2>
           <table>
-            <thead><tr><th style="width:90px">地址</th><th style="width:70px">类型</th><th style="width:150px">变量名(中文)</th><th style="width:80px">符号</th><th>注释</th><th style="width:60px"></th></tr></thead>
+            <thead><tr><th style="width:110px">所属 PLC</th><th style="width:80px">地址</th><th style="width:60px">类型</th><th style="width:150px">变量名(中文)</th><th style="width:80px">符号</th><th>注释</th><th style="width:60px"></th></tr></thead>
             <tbody id="ioBody"></tbody>
           </table>
         </div>
@@ -232,7 +242,7 @@ const MODELS = [
 ];
 const state = {
   plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1', ip:'192.168.0.1', subnet:'255.255.255.0'}],
-  io: [], ioImages: [],
+  io: [], ioImages: [], ioFiles: [],
   modes: [
     {name:'复位', trigger:'复位信号=1 时按启动按钮'},
     {name:'手动单次', trigger:'手/自动=0 时按启动按钮'},
@@ -311,6 +321,7 @@ function renderPlcs(){
   $('plcList').querySelectorAll('[data-pdel]').forEach(b=>b.onclick=e=>{
     state.plcs.splice(+e.target.dataset.pdel, 1); renderPlcs(); refreshChips();
   });
+  refreshIoTargets();
 }
 $('btnAddPlc').onclick = ()=>{
   const n = state.plcs.length + 1;
@@ -320,16 +331,27 @@ $('btnAddPlc').onclick = ()=>{
 };
 renderPlcs();
 
-/* ---------- ② IO 解析 ---------- */
-function parseIo(text){
+/* ---------- ② IO 解析（多 PLC + 图片识别） ---------- */
+function refreshIoTargets(){
+  const sel = $('ioTargetPlc');
+  const keep = sel.value;
+  sel.innerHTML = state.plcs.map(p=>`<option>${p.name}</option>`).join('');
+  if(state.plcs.some(p=>p.name===keep)) sel.value = keep;
+}
+function parseIo(text, loose, plc){
   const out=[];
   for(const raw of text.split(/\r?\n/)){
-    const line = raw.trim();
+    const line = (loose ? raw.replace(/．/g,'.') : raw).trim();
     if(!line) continue;
-    const toks = line.split(/\t+| {2,}|\s*\|\s*|\s*,\s*|\s*，\s*|\s*、\s*/).map(s=>s.trim()).filter(Boolean);
+    const toks = (loose ? line.split(/\s+/) : line.split(/\t+| {2,}|\s*\|\s*|\s*,\s*|\s*，\s*|\s*、\s*/)).map(s=>s.trim()).filter(Boolean);
     let addr=null; const rest=[];
     for(const t of toks){
-      const m = t.replace(/^%/,'').match(/^([IQMiqm])(\d+)\.(\d+)$/);
+      let v = t.replace(/^%/,'');
+      if(loose){
+        const fi = v.match(/^([I1l])(\d+)\.(\d+)$/); if(fi) v = 'I'+fi[2]+'.'+fi[3];
+        const fq = v.match(/^([Q0o])(\d+)\.(\d+)$/); if(fq) v = 'Q'+fq[2]+'.'+fq[3];
+      }
+      const m = v.match(/^([IQMiqm])(\d+)\.(\d+)$/);
       if(m && !addr) addr = (m[1].toUpperCase()+m[2]+'.'+m[3]);
       else rest.push(t);
     }
@@ -339,13 +361,17 @@ function parseIo(text){
     let name='';
     const r2 = r1.filter(t=>{ if(!name && /[一-鿿]/.test(t)){ name=t.replace(/\s+/g,''); return false; } return true; });
     if(!name && r2.length) name = r2.shift().replace(/\s+/g,'');
-    out.push({address:addr, type: addr[0]==='I'?'DI':addr[0]==='Q'?'DO':'M', name:name||addr, symbol:sym, comment:r2.join(' ')});
+    out.push({plc, address:addr, type: addr[0]==='I'?'DI':addr[0]==='Q'?'DO':'M', name:name||addr, symbol:sym, comment:r2.join(' ')});
   }
   return out;
+}
+function plcOptions(cur){
+  return state.plcs.map(p=>`<option ${p.name===cur?'selected':''}>${p.name}</option>`).join('');
 }
 function renderIo(){
   $('ioCount').textContent = state.io.length + ' 点';
   $('ioBody').innerHTML = state.io.map((t,i)=>`<tr>
+    <td><select data-i="${i}" data-f="plc">${plcOptions(t.plc)}</select></td>
     <td><input value="${t.address}" data-i="${i}" data-f="address"></td>
     <td>${t.type}</td>
     <td><input value="${t.name}" data-i="${i}" data-f="name"></td>
@@ -353,7 +379,7 @@ function renderIo(){
     <td><input value="${t.comment}" data-i="${i}" data-f="comment"></td>
     <td><button class="btn danger sm" data-del="${i}">删</button></td>
   </tr>`).join('');
-  $('ioBody').querySelectorAll('input').forEach(inp=>inp.onchange=e=>{
+  $('ioBody').querySelectorAll('input,select').forEach(inp=>inp.onchange=e=>{
     state.io[+e.target.dataset.i][e.target.dataset.f] = e.target.value.trim();
     refreshChips();
   });
@@ -362,19 +388,44 @@ function renderIo(){
   });
 }
 $('btnParse').onclick = ()=>{
-  const rows = parseIo($('ioText').value);
+  const rows = parseIo($('ioText').value, false, $('ioTargetPlc').value);
   if(!rows.length){ toast('没解析到点，请检查格式（需要 I0.0/Q0.0 这类地址）'); return; }
   state.io = rows; renderIo(); refreshChips();
-  toast('识别到 '+rows.length+' 个 IO 点');
+  toast('识别到 '+rows.length+' 个 IO 点（导入到 '+$('ioTargetPlc').value+'）');
 };
 $('btnAddRow').onclick = ()=>{
-  state.io.push({address:'I0.'+state.io.length, type:'DI', name:'', symbol:'', comment:''});
+  state.io.push({plc:$('ioTargetPlc').value, address:'I0.'+state.io.length, type:'DI', name:'', symbol:'', comment:''});
   renderIo(); refreshChips();
 };
 $('ioImage').onchange = e=>{
-  state.ioImages = [...e.target.files].map(f=>f.name);
-  $('ioImageList').textContent = state.ioImages.length ? '已选图片：'+state.ioImages.join('、')+'（生成时一并交给 Agent）' : '';
+  state.ioFiles = [...e.target.files];
+  state.ioImages = state.ioFiles.map(f=>f.name);
+  $('ioImageList').textContent = state.ioImages.length ? '已选图片：'+state.ioImages.join('、') : '';
 };
+$('btnOcr').onclick = async ()=>{
+  if(!state.ioFiles || !state.ioFiles.length){ toast('先选择图片'); return; }
+  $('ocrStatus').textContent = '识别中…（Windows 本地 OCR，图片大可能要几秒）';
+  const plc = $('ioTargetPlc').value;
+  let total = 0;
+  for(const f of state.ioFiles){
+    try{
+      const r = await fetch('/api/ocr', {method:'POST', headers:{'Content-Type':'application/octet-stream'}, body: f});
+      const d = await r.json();
+      if(d.ok && d.text.trim()){
+        const rows = parseIo(d.text, true, plc);
+        state.io = state.io.concat(rows);
+        total += rows.length;
+      } else {
+        $('ocrStatus').textContent = '识别失败：'+(d.text||'无结果')+'（图片名将随配置交给 Agent 视觉识别）';
+      }
+    }catch(err){
+      $('ocrStatus').textContent = '本地识别服务不可用（请用 python serve.py 启动向导）；图片名将随配置交给 Agent 视觉识别。';
+      break;
+    }
+  }
+  if(total){ renderIo(); refreshChips(); $('ocrStatus').textContent = '识别完成：新增 '+total+' 个点（'+plc+'），请逐行核对。'; toast('图片识别完成，新增 '+total+' 点'); }
+};
+refreshIoTargets();
 
 /* ---------- ③ 流程 ---------- */
 function renderModes(){
