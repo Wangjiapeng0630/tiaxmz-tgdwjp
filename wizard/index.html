@@ -99,7 +99,7 @@ td .mini{width:70px}
       <!-- ① PLC 型号 -->
       <section class="panel active" id="panel-plc">
         <h1>PLC 设备与网络</h1>
-        <div class="sub">可添加多台 PLC；每台设置 PN/IE 接口与 IPv4 地址。TIA 版本为整个项目的目标版本。</div>
+        <div class="sub">可添加多台 PLC；每台设置设备名、系列/型号/订货号/固件。TIA 版本为整个项目的目标版本。</div>
         <div class="card">
           <h2>项目信息</h2>
           <div class="row">
@@ -114,7 +114,7 @@ td .mini{width:70px}
           <h2>PLC 设备列表 <span class="tag" id="plcCount">1 台</span></h2>
           <div id="plcList"></div>
           <button class="btn ghost sm" id="btnAddPlc">+ 添加 PLC</button>
-          <div class="hint">多台 PLC 时分别设置设备名与 PN/IE 接口名；IP 地址不在本向导设置（在 TIA 设备与网络里配）。</div>
+          <div class="hint">多台 PLC 时分别设置设备名；PN/IE 接口与 IP 在 TIA 的「设备与网络」里配置。</div>
         </div>
       </section>
 
@@ -233,7 +233,7 @@ const MODELS = [
   {family:'S7-1500', model:'CPU 1516-3 PN/DP', mlfb:'6ES7516-3AN02-0AB0', fw:'V2.9'}
 ];
 const state = {
-  plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_1'}],
+  plcs: [{name:'PLC_1', family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5'}],
   io: [], attachments: [],
   modes: [
     {plc:'PLC_1', name:'复位', trigger:'复位信号=1 时按启动按钮'},
@@ -261,7 +261,7 @@ $('btnPrev').onclick = ()=>show(cur-1);
 $('btnNext').onclick = ()=>show(cur+1);
 $('btnGoGen').onclick = ()=>{ show(4); doGen(); };
 
-/* ---------- ① PLC 设备（多台 + PN/IE 网络） ---------- */
+/* ---------- ① PLC 设备（多台） ---------- */
 const FW = {
   'S7-1200': ['V4.1','V4.2','V4.3','V4.4','V4.5','V4.6','V4.7'],
   'S7-1500': ['V2.8','V2.9','V3.0','V3.1']
@@ -286,8 +286,6 @@ function renderPlcs(){
       <div class="row">
         <div style="flex:0 0 160px"><label>型号名</label><input value="${p.model}" data-pi="${i}" data-pf="model"></div>
         <div style="flex:0 0 100px"><label>固件</label><select data-pi="${i}" data-pf="firmware">${fw.map(v=>`<option ${v===p.firmware?'selected':''}>${v}</option>`).join('')}</select></div>
-        <div style="flex:0 0 110px"><label>接口类型</label><select data-pi="${i}" data-pf="ifaceType"><option ${p.ifaceType==='PN/IE'?'selected':''}>PN/IE</option></select></div>
-        <div style="flex:0 0 140px"><label>接口名</label><input value="${p.iface}" data-pi="${i}" data-pf="iface"></div>
         <div style="flex:0 0 60px;display:flex;align-items:flex-end"><button class="btn danger sm" data-pdel="${i}">删除</button></div>
       </div>
     </div>`;
@@ -315,7 +313,7 @@ function renderPlcs(){
 }
 $('btnAddPlc').onclick = ()=>{
   const n = state.plcs.length + 1;
-  state.plcs.push({name:'PLC_'+n, family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5', ifaceType:'PN/IE', iface:'PN/IE_'+n});
+  state.plcs.push({name:'PLC_'+n, family:'S7-1200', model:'CPU 1215C DC/DC/DC', mlfb:'6ES7215-1AG40-0XB0', firmware:'V4.5'});
   renderPlcs(); refreshChips();
   toast('已添加 PLC_'+n);
 };
@@ -375,7 +373,7 @@ refreshIoTargets();
 /* ---------- ③ 流程（模式/文字描述/库块） ---------- */
 const BLOCK_LIB = [
   {key:'报警', desc:'超时报警 FB：动作 N 秒无到位→报警位，汇总进报警字（Word 位打包）'},
-  {key:'通讯', desc:'站间通讯 FC：PUT/GET 数据交换与站间完成握手（需各台配好 PN/IE 与 IPv4）'},
+  {key:'通讯', desc:'站间通讯 FC：PUT/GET 数据交换与站间完成握手（站间网络在 TIA 设备与网络里配）'},
   {key:'轴控', desc:'轴控 FC：步进/伺服轴 MC_Power/MC_Halt/MC_MoveJog/MC_Reset 与故障复位'},
   {key:'计时', desc:'节拍计时：TONR 累计当前节拍，MAX 取最慢节拍（产线节拍统计）'},
   {key:'产量', desc:'产量统计：CTU 计数 + 生产进度百分比（SCL 混编）'},

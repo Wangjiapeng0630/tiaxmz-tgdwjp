@@ -18,9 +18,7 @@
       "family": "S7-1200",
       "model": "CPU 1215C DC/DC/DC",
       "mlfb": "6ES7215-1AG40-0XB0",
-      "firmware": "V4.7",
-      "ifaceType": "PN/IE",
-      "iface": "PN/IE_1"
+      "firmware": "V4.7"
     }
   ],
   "language": "LAD | SCL",
@@ -41,7 +39,7 @@
 
 > **留空语义**：`io` / `steps` / `modes` / `signalConvention.note` 等允许为空数组或空串——表示使用者未填。Agent **不得臆造**：按 skill 的材料清单补问，或先生成可填的空骨架。**必填项只有 PLC 型号（`plcs[].mlfb`）**。
 
-1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。**不涉及 IP/子网设置**。
+1. **tiaVersion + plcs** → 任务 1 环境接入：按 `tiaVersion` 选 TIA；对 `plcs` 数组**每台**执行 `AddDeviceWithFallback(family, mlfb, firmware, name)`。项目名用 `project.name`。`firmware` 为 CPU 固件（S7-1200 支持 V4.1–V4.7，S7-1500 支持 V2.8–V3.1）。**不涉及 IP/子网/接口命名设置**（在 TIA 设备与网络里配）。
 2. **io + attachments** → 任务 2 变量表：`io` 为使用者逐行添加的点表（按 `plc` 分组到各 PLC）；`attachments` 为文档/图片附件（base64 内嵌）——先解码写盘，**图片用视觉识别、Office 用 python-docx/openpyxl 解析**出 IO 点，与 `io` 点表合并核对（附件提取与点表冲突时以附件原始内容为准，差异回呈确认）。
 3. **modes + flows + signalConvention** → 任务 3 提纯素材：`modes`（按 `plc` 分组，含触发）+ `flows[].text`（使用者对每台 PLC 的自由文字描述）+ 信号约定，整理成模式×序列表回呈确认。
    **flows 为空**：不生成按钮/动作/流程/模式等框架块，项目只含一个空 Main（OB1，空网络）；IO 变量表照常生成。

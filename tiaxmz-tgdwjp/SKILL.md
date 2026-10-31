@@ -24,7 +24,7 @@ description: TIA Portal（博图）PLC 项目开发全流程——通过 tia-por
 
 | # | 材料 | 内容要求 | 缺了怎么办 |
 |---|------|----------|------------|
-| 1 | 设备信息 | 可**多台 PLC**；每台给系列/型号/订货号/固件（例：CPU 1215C DC/DC/DC，6ES7215-1AG40-0XB0，V4.5）及 PN/IE 接口名与 IPv4/掩码；另注明目标 TIA 版本（V18/V20/V21） | 我来问，不猜 |
+| 1 | 设备信息 | 可**多台 PLC**；每台给设备名/系列/型号/订货号/固件（例：CPU 1215C DC/DC/DC，6ES7215-1AG40-0XB0，V4.5）；另注明目标 TIA 版本（V18/V20/V21） | 我来问，不猜 |
 | 2 | IO 表 | 每点的地址、符号、说明、0/1 状态语义 | 必备，缺则先要 |
 | 3 | 控制要求/工艺描述 | 模式档位与触发方式、动作先后顺序、每步完成判据 | 必备，缺则先要 |
 | 4 | 信号约定 | 按钮/传感器常开还是常闭、1=正常还是 0=动作、停止/急停行为（暂停续跑或中止） | 提纯环节确认 |
@@ -38,8 +38,8 @@ description: TIA Portal（博图）PLC 项目开发全流程——通过 tia-por
 每步三行：**【需要】**（输入材料）→ **【做什么】**（动作）→ **【交出】**（产出与完成判据）。
 
 ### 任务 1：环境接入
-- 【需要】材料 1 设备信息（多台 PLC 与各自 PN/IE、IPv4，目标 TIA 版本）；项目名/存放目录（可默认：工作目录+中文项目名）
-- 【做什么】`Bootstrap` → `Connect` → `CreateProject` → 对**每台** PLC 按用户给的型号 `AddDeviceWithFallback(family, preferredMlfb, preferredVersion, deviceName)` → 按各台 `iface/ip/subnet` 配 PN/IE 网络（`ConnectDeviceNodesToProfinetSubnet` 等；IP 可在设备属性设置，多台注意同子网）→ `GetDevices` 验证。设备型号**必须用用户给的**，没有就问，不假设。
+- 【需要】材料 1 设备信息（多台 PLC 各自设备名/型号/固件，目标 TIA 版本）；项目名/存放目录（可默认：工作目录+中文项目名）
+- 【做什么】`Bootstrap` → `Connect` → `CreateProject` → 对**每台** PLC 按用户给的型号 `AddDeviceWithFallback(family, preferredMlfb, preferredVersion, deviceName)` → `GetDevices` 验证。设备型号**必须用用户给的**，没有就问，不假设。**IP/子网/PN 接口命名不在生成范围**（在 TIA 设备与网络里配）。
 - 【交出】建好的工程与 PLC 设备。占用约定：MCP 打开项目时 TIA 界面打开同项目报 0100:000295；要让用户查看前先 `SaveProject` → `CloseProject` → `Disconnect`；继续开发用 `AttachToOpenProject`/`OpenProject`。`GetProjectTree` 缺 DLL 时报错属已知，用 `GetDevices/GetBlocks` 替代。
 
 ### 任务 2：IO 变量表
