@@ -329,6 +329,16 @@ function renderPlcs(){
       } else if(f === 'family'){
         p.family = e.target.value; p.model=''; p.mlfb=''; p.firmware=(FW[p.family]||['V4.5'])[0];
         renderPlcs(); refreshChips();
+      } else if(f === 'name'){
+        const old = p.name;
+        p.name = e.target.value.trim();
+        const nn = p.name;
+        if(old && nn && old !== nn){
+          state.io.forEach(t=>{ if(t.plc === old) t.plc = nn; });
+          state.modes.forEach(m=>{ if(m.plc === old) m.plc = nn; });
+          state.flows.forEach(x=>{ if(x.plc === old) x.plc = nn; });
+        }
+        renderPlcs(); renderIo(); refreshChips();
       } else {
         p[f] = e.target.value; refreshChips();
       }
